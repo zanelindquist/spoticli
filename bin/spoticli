@@ -1,0 +1,17 @@
+#!/bin/bash
+
+PROJECT_ROOT="$(dirname "$(dirname "$(realpath "$0")")")"
+
+echo $PROJECT_ROOT
+
+case "$1" in
+	login)
+		"$PROJECT_ROOT/commands/login"
+		;;
+	*)
+		echo "Usage: spoticli <command>"
+		echo
+		echo "Commands:"
+		echo "	login		Log in with Spotify"
+		;;
+esac

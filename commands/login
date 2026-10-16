@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+PROJECT_ROOT="$(dirname "$(dirname "$(realpath "$0")")")"
+
+source "$PROJECT_ROOT/lib/auth.sh"
+
+# Load local development configuration if available.
+if [[ -f "$PROJECT_ROOT/config/local.env" ]]; then
+    source "$PROJECT_ROOT/config/local.env"
+fi
+
+: "${SPOTIFY_CLIENT_ID:?Set SPOTIFY_CLIENT_ID in config/local.env}"
+: "${SPOTIFY_REDIRECT_URI:?Set SPOTIFY_REDIRECT_URI in config/local.env}"
+
+session_id=$(auth_create_session)
+state=$(auth_get_state "$session_id")
+
+encoded_redirect_uri=$(python3 -c 'import urllib.parse, os; print(urllib.parse.quote(os.environ["SPOTIFY_REDIRECT_URI"], safe=""))')
+
+printf '\nSpotiCLI Spotify Login\n\n'
+printf 'Open this URL in your browser:\n\n'
+
+auth_url="https://accounts.spotify.com/authorize?client_id=${SPOTIFY_CLIENT_ID}&response_type=code&redirect_uri=${encoded_redirect_uri}&state=${state}&scope=user-read-private%20user-read-email"
+
+printf '%s\n\n' $auth_url
+
+printf '\n\nWaiting for Spotify authentication...\n\n'
+
+
+if auth_wait "$session_id"; then
+    printf '\nYou are now connected to Spotify.\n'
+else
+    printf '\nLogin failed. Please try again.\n' >&2
+    exit 1
+fi
