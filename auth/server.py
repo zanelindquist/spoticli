@@ -132,15 +132,15 @@ class AuthHandler(BaseHTTPRequestHandler):
 				print("Refresh token written to file")
 
 			# Record token expiration
+			with open(user_session_path / "token_expires_at", "w") as file:
+				expires_at = int(time.time()) + token_info["expire_in"]
+				file.write(str(expires_at))
+				file.close()
 		
 			# Update status
 			with open(user_session_path / "status", "w") as file:
 				file.write("token_saved")
 				file.close()
-
-
-
-
 
 		else:
 			print(f"Error: {response.status_code}")
