@@ -37,6 +37,20 @@ auth_get_status() {
 	cat "$SESSION_DIR/$1/status"
 }
 
+# Params: <session_id> <state>
+auth_set_state() {
+    echo "$2" > "$SESSION_DIR/$1/state"
+}
+
+# Params: <session_id> <authorization_code>
+auth_exchange_code() {
+    source ../config/local.bash.env
+
+    session_id=$1
+
+    curl -Xsr GET "https://accounts.spotify.com/api/token" -H "content-type: application/json" -H "Authorization: Basic $SPOTIFY_CLIENT_ID:$SPOTIFY_CLIENT_SECRET" -d "{code: $2, redirect_uri: $redirect_uri, grant_type: 'authorization_code'"
+}
+
 auth_wait() {
 	local session_id="$1"
 	local session_path="$SESSION_DIR/$session_id"
@@ -48,11 +62,11 @@ auth_wait() {
 
 		case "$status" in
 			authenticated)
-				echo "✅ Spotify authentication success"
+				echo "Spotify authentication success"
 				return 0
 				;;
 			failed)
-				echo "❌ Spotify authentication failed"
+				echo "Spotify authentication failed"
 				return 0
 				;;
 			pending)

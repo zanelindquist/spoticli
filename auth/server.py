@@ -3,108 +3,148 @@
 
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlparse, parse_qs
+import subprocess
+from pathlib import Path
+import requests
+import os
+import base64
+from dotenv import load_dotenv
 
 HOST = "127.0.0.1"
 PORT = 8080
 
 class AuthHandler(BaseHTTPRequestHandler):
 
-    def do_GET(self):
-        parsed = urlparse(self.path)
+	def do_GET(self):
+		parsed = urlparse(self.path)
 
-        if parsed.path == "/":
-            self.handle_home()
-        elif parsed.path == "/callback":
-            self.handle_callback(parsed)
-        else:
-            self.send_error(404, "Not Found")
+		if parsed.path == "/":
+			self.handle_home()
+		elif parsed.path == "/callback":
+			self.handle_callback(parsed)
+		else:
+			self.send_error(404, "Not Found")
 
-    def handle_home(self):
-        body = """
-        <html>
-            <head>
-                <title>SpotiCLI</title>
-            </head>
-            <body>
-                <h1>SpotiCLI</h1>
-                <p>Authentication server is running.</p>
-            </body>
-        </html>
-        """
+	def handle_home(self):
+		body = """
+		<html>
+			<head>
+				<title>SpotiCLI</title>
+			</head>
+			<body>
+				<h1>SpotiCLI</h1>
+				<p>Authentication server is running.</p>
+			</body>
+		</html>
+		"""
 
-        self.send_response(200)
-        self.send_header("Content-Type", "text/html")
-        self.send_header("Content-Length", str(len(body.encode())))
-        self.end_headers()
+		self.send_response(200)
+		self.send_header("Content-Type", "text/html")
+		self.send_header("Content-Length", str(len(body.encode())))
+		self.end_headers()
 
-        self.wfile.write(body.encode())
+		self.wfile.write(body.encode())
 
-    def handle_callback(self, parsed):
-        params = parse_qs(parsed.query)
+	def handle_callback(self, parsed):
+		params = parse_qs(parsed.query)
 
-        code = params.get("code", [None])[0]
-        state = params.get("state", [None])[0]
-        error = params.get("error", [None])[0]
+		code = params.get("code", [None])[0]
+		session_id = params.get("state", [None])[0]
+		error = params.get("error", [None])[0]
 
-        print("\n--- Spotify Callback ---")
+		print("\n--- Spotify Callback ---")
 
-        if error:
-            print(f"Spotify returned an error: {error}")
-            self.send_response(400)
-            self.send_header("Content-Type", "text/html")
-            self.end_headers()
-            self.wfile.write(
-                b"<h1>Authentication failed</h1>"
-            )
-            return
+		if error:
+			print(f"Spotify returned an error: {error}")
+			self.send_response(400)
+			self.send_header("Content-Type", "text/html")
+			self.end_headers()
+			self.wfile.write(
+				b"<h1>Authentication failed</h1>"
+			)
+			return
 
-        if not code:
-            print("No authorization code received.")
-            self.send_response(400)
-            self.send_header("Content-Type", "text/html")
-            self.end_headers()
-            self.wfile.write(
-                b"<h1>No authorization code received</h1>"
-            )
-            return
+		if not code:
+			print("No authorization code received.")
+			self.send_response(400)
+			self.send_header("Content-Type", "text/html")
+			self.end_headers()
+			self.wfile.write(
+				b"<h1>No authorization code received</h1>"
+			)
+			return
 
-        print(f"Authorization code received: {code}")
-        print(f"State received: {state}")
+		print(f"Authorization code received: {code}")
+		print(f"State received: {session_id}")
 
-        self.send_response(200)
-        self.send_header("Content-Type", "text/html")
-        self.end_headers()
+		# Get .env information
+		load_dotenv(dotenv_path="../config/local.env")
 
-        self.wfile.write(
-            b"""
-            <html>
-                <head>
-                    <title>SpotiCLI</title>
-                </head>
-                <body>
-                    <h1>Authentication successful!</h1>
-                    <p>You can return to your SSH session.</p>
-                </body>
-            </html>
-            """
-        )
+		# Now exchange the code for a token
 
-    def log_message(self, format, *args):
-        print(f"[HTTP] {format % args}")
+		auth_string = f"{os.getenv("SPOTIFY_CLIENT_ID")}:{os.getenv("SPOTIFY_CLIENT_SECRET")}"
+		auth_bytes = auth_string.encode("utf-8")
+		auth_base64 = base64.b64encode(auth_bytes).decode("utf-8")
+
+
+		headers = {
+				"Content-Type": "application/x-www-form-urlencoded",
+				"Authorization": f"Basic {auth_base64}"
+		}
+		data = {
+			"code": code,
+			"redirect_uri": os.getenv("SPOTIFY_REDIRECT_URI"),
+			"grant_type": "authorization_code"
+		}
+
+		response = requests.post("https://accounts.spotify.com/api/token", headers=headers, data=data)
+
+		print(f"Status Code: {response.status_code}")
+		print(f"Response Text: {response.text}")
+
+		if response.status_code == 200:
+			token_info = response.json()
+			access_token = token_info["access_token"]
+			refresh_token = token_info["refresh_token"]
+			print(f"Success\nAccess Token: {access_token}")
+		else:
+			print("Error: {response.status_code}")
+			print(response.json())
+
+		self.send_response(200)
+		self.send_header("Content-Type", "text/html")
+		self.end_headers()
+
+		self.wfile.write(
+			b"""
+			<html>
+				<head>
+					<title>SpotiCLI</title>
+				</head>
+				<body>
+					<h1>Authentication successful!</h1>
+					<p>You can return to your SSH session.</p>
+				</body>
+			</html>
+			"""
+		)
+
+	def log_message(self, format, *args):
+		print(f"[HTTP] {format % args}")
 
 
 def main():
-    server = HTTPServer((HOST, PORT), AuthHandler)
+	server = HTTPServer((HOST, PORT), AuthHandler)
 
-    print(f"SpotiCLI auth server listening on http://{HOST}:{PORT}")
+	print(f"SpotiCLI auth server listening on http://{HOST}:{PORT}")
 
-    try:
-        server.serve_forever()
-    except KeyboardInterrupt:
-        print("\nShutting down...")
-    finally:
-        server.server_close()
+	try:
+		server.serve_forever()
+	except KeyboardInterrupt:
+		print("\nShutting down...")
+	finally:
+		server.server_close()
 
 
 if __name__ == "__main__":
-    main()
+	main()
