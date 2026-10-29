@@ -9,6 +9,7 @@ import requests
 import os
 import base64
 from dotenv import load_dotenv
+import time
 
 HOST = "127.0.0.1"
 PORT = 8080
@@ -67,7 +68,7 @@ class AuthHandler(BaseHTTPRequestHandler):
 		if not code:
 			print("No authorization code received.")
 			self.send_response(400)
-			self.send_header("Content-Type", "text/html")
+			self.send_header("Content-Type", "text/tml")
 			self.end_headers()
 			self.wfile.write(
 				b"<h1>No authorization code received</h1>"
@@ -78,7 +79,18 @@ class AuthHandler(BaseHTTPRequestHandler):
 		print(f"State received: {session_id}")
 
 		# Get .env information
-		load_dotenv(dotenv_path="../config/local.env")
+		script_dir = Path(__file__).resolve().parent
+		env_path = (script_dir / "../config/local.env").resolve()
+		load_dotenv(dotenv_path=env_path, override=True)
+
+		client_id = os.getenv("SPOTIFY_CLIENT_ID")
+		client_secret = os.getenv("SPOTIFY_CLIENT_SECRET")
+		redirect_uri = os.getenv("SPOTIFY_REDIRECT_URI")
+
+		print(f"Loaded env file: {env_path.exists()}")
+		print(f"Client ID present: {client_id}")
+		print(f"Client secret present: {client_secret}")
+		print(f"Redirect URI: {redirect_uri}")
 
 		# Now exchange the code for a token
 
@@ -99,16 +111,39 @@ class AuthHandler(BaseHTTPRequestHandler):
 
 		response = requests.post("https://accounts.spotify.com/api/token", headers=headers, data=data)
 
-		print(f"Status Code: {response.status_code}")
-		print(f"Response Text: {response.text}")
-
 		if response.status_code == 200:
 			token_info = response.json()
 			access_token = token_info["access_token"]
 			refresh_token = token_info["refresh_token"]
-			print(f"Success\nAccess Token: {access_token}")
+			print(f"Success\nJSON Info: {token_info}")
+
+			user_session_path = script_dir / f"../data/sessions/{session_id}"
+
+			# Write token to file
+			with open(user_session_path / "token", "w") as file:
+				file.write(access_token)
+				file.close()
+				print("Token written to file")
+
+			# Record refresh token
+			with open(user_session_path / "refresh_token", "w") as file:
+				file.write(refresh_token)
+				file.close()
+				print("Refresh token written to file")
+
+			# Record token expiration
+		
+			# Update status
+			with open(user_session_path / "status", "w") as file:
+				file.write("token_saved")
+				file.close()
+
+
+
+
+
 		else:
-			print("Error: {response.status_code}")
+			print(f"Error: {response.status_code}")
 			print(response.json())
 
 		self.send_response(200)
