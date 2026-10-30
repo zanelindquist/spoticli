@@ -2,14 +2,16 @@
 
 PROJECT_ROOT="$(dirname "$(dirname "$(realpath "$0")")")"
 
-echo $PROJECT_ROOT
-
 # Argument 1 should always be a command
 case "$1" in
 	login)
-        # Arguemnt 1 should be the user fingerprint
-		"$PROJECT_ROOT/commands/login" $2
+        # Arguemnts: <user_fingerprint>
+		"$PROJECT_ROOT/commands/login.sh" $2
 		;;
+    reauth)
+        # Arguemnts: <user_id>
+        "$PROJECT_ROOT/commands/reauth.sh" $2
+        ;;
 	*)
 		echo "Usage: spoticli <command>"
 		echo

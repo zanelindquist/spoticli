@@ -101,8 +101,8 @@ class AuthHandler(BaseHTTPRequestHandler):
 
 
 		headers = {
-				"Content-Type": "application/x-www-form-urlencoded",
-				"Authorization": f"Basic {auth_base64}"
+			"Content-Type": "application/x-www-form-urlencoded",
+			"Authorization": f"Basic {auth_base64}"
 		}
 		data = {
 			"code": code,
@@ -141,7 +141,7 @@ class AuthHandler(BaseHTTPRequestHandler):
 			with open(user_data_path / "token_expires_at", "w") as file:
 				expires_at = int(time.time()) + token_info["expires_in"]
 				file.write(str(expires_at))
-				file.close()
+				print("Writing expiration to file")
 			
 			# Save the user_id to the session file
 			with open(user_session_path / "user_id", "w") as file:
