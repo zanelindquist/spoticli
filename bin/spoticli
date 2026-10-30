@@ -7,7 +7,7 @@ echo $PROJECT_ROOT
 # Argument 1 should always be a command
 case "$1" in
 	login)
-        # Arguemnt 2 should be the user_id from fingerprinting
+        # Arguemnt 1 should be the user fingerprint
 		"$PROJECT_ROOT/commands/login" $2
 		;;
 	*)

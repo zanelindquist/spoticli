@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+# Arguements: <user_fingerprint>
+
 set -euo pipefail
 
 PROJECT_ROOT="$(dirname "$(dirname "$(realpath "$0")")")"
@@ -26,11 +28,16 @@ auth_url="https://accounts.spotify.com/authorize?client_id=${SPOTIFY_CLIENT_ID}&
 
 printf '%s\n\n' $auth_url
 
-printf '\n\nWaiting for Spotify authentication...\n\n'
+# Wait for the auth flow to return a user_id
+auth_wait $session_id user_id
 
+if [[ user_id != "" ]]; then
+    # Add a row to the user fingerprint mapping file now that we have both pieces
+    
+    echo "$1:$user_id" >> "$PROJECT_ROOT/data/key_user_mappings"
 
-if auth_wait "$session_id"; then
     printf '\nYou are now connected to Spotify.\n'
+    printf 'User ID: %s' $user_id
 else
     printf '\nLogin failed. Please try again.\n' >&2
     exit 1

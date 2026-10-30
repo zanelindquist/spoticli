@@ -10,6 +10,7 @@ import os
 import base64
 from dotenv import load_dotenv
 import time
+import uuid
 
 HOST = "127.0.0.1"
 PORT = 8080
@@ -117,29 +118,39 @@ class AuthHandler(BaseHTTPRequestHandler):
 			refresh_token = token_info["refresh_token"]
 			print(f"Success\nJSON Info: {token_info}")
 
-			user_session_path = script_dir / f"../data/sessions/{session_id}"
+			user_id = uuid.uuid4().hex
 
+			user_session_path = script_dir / f"../data/sessions/{session_id}"
+			user_data_path = script_dir / f"../data/users/{user_id}"
+			# Create user's dir
+			user_data_path.mkdir(parents=True, exist_ok=True)
+			
 			# Write token to file
-			with open(user_session_path / "token", "w") as file:
+			with open(user_data_path / "token", "w") as file:
 				file.write(access_token)
 				file.close()
 				print("Token written to file")
 
 			# Record refresh token
-			with open(user_session_path / "refresh_token", "w") as file:
+			with open(user_data_path / "refresh_token", "w") as file:
 				file.write(refresh_token)
 				file.close()
 				print("Refresh token written to file")
 
 			# Record token expiration
-			with open(user_session_path / "token_expires_at", "w") as file:
-				expires_at = int(time.time()) + token_info["expire_in"]
+			with open(user_data_path / "token_expires_at", "w") as file:
+				expires_at = int(time.time()) + token_info["expires_in"]
 				file.write(str(expires_at))
 				file.close()
+			
+			# Save the user_id to the session file
+			with open(user_session_path / "user_id", "w") as file:
+				file.write(user_id)
+				file.close()
 		
-			# Update status
+			# Finally update status path to indicate to the auth_wait function that we are complete and the user's files are ready
 			with open(user_session_path / "status", "w") as file:
-				file.write("token_saved")
+				file.write("authenticated")
 				file.close()
 
 		else:
