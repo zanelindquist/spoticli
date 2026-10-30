@@ -4,9 +4,11 @@ PROJECT_ROOT="$(dirname "$(dirname "$(realpath "$0")")")"
 
 echo $PROJECT_ROOT
 
+# Argument 1 should always be a command
 case "$1" in
 	login)
-		"$PROJECT_ROOT/commands/login"
+        # Arguemnt 2 should be the user_id from fingerprinting
+		"$PROJECT_ROOT/commands/login" $2
 		;;
 	*)
 		echo "Usage: spoticli <command>"
