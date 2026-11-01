@@ -25,6 +25,7 @@ while [[ $is_running -ne 0 ]]; do
     progress_width_ratio=1.5
     left_progress_indent=$( echo "($SCREEN_WIDTH - $SCREEN_WIDTH / $progress_width_ratio) / 2" | bc )
     progress_bars=$( echo "($SCREEN_WIDTH / $progress_width_ratio) * $progress_ms / $duration_ms" | bc )
+    progress_bars_remaining=$( echo "($SCREEN_WIDTH / $progress_width_ratio) - $progress_bars - 1" | bc )
 
     # Print stuff
     # Check if we need to redraw entire screen
@@ -56,18 +57,25 @@ while [[ $is_running -ne 0 ]]; do
             # Now redraw progress bar
             printf "\n%*s|" "$left_progress_indent" "";
             print_bars $progress_bars ""
+            printf "⊙"
+            printf "$CHARCOAL"
+            print_bars $progress_bars_remaining ""
+            printf "${RESET}|\n"
 
-            # printf "%*s|" "$( echo "$left_progress_indent + $SCREEN_WIDTH / $progress_width_ratio" | bc )" "";
             echo -e "\n";
             print_highlight "$name" 1 "$VIOLET" $SCREEN_WIDTH "center"
             print_highlight "$artists" 1 "$VIOLET" $SCREEN_WIDTH "center"
         else
 
             # Go up 4 lines and clear it
-            printf "\033[s\033[4A\033[K"
+            printf "\033[s\033[5A\033[K"
 
             printf "\n%*s|" "$left_progress_indent" "";
             print_bars $progress_bars ""
+            printf "⊙"
+            printf "$CHARCOAL"
+            print_bars $progress_bars_remaining ""
+            printf "${RESET}|\n"
 
             # Restore cursor position
             printf "\e[u"

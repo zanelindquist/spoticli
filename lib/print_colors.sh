@@ -10,6 +10,7 @@ GREEN=$'\e[38;5;46m'
 BLUE=$'\e[38;5;21m'
 INDIGO=$'\e[38;5;57m'
 VIOLET=$'\e[38;5;165m'
+CHARCOAL=$'\e[38;5;238m'
 RESET=$'\e[0m'
 
 # Contrast colors
