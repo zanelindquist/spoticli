@@ -34,7 +34,7 @@ while [[ $is_running -ne 0 ]]; do
         clear
         draw_topbar 2
         echo -e "\n\n"
-        indent_image $image_url $(( SCREEN_WIDTH / 2 )) $(( SCREEN_WIDTH / 4 ))
+        indent_image $image_url $(( SCREEN_WIDTH / 2 )) $(( SCREEN_WIDTH / 4 )) 1
         echo;
     # Otherwise, erase the last couple of lines and just redraw the progress
     fi
