@@ -2,17 +2,9 @@
 
 # Source the file relative to the script's actual location
 PROJECT_ROOT="$(dirname "$(dirname "$(realpath "$0")")")"
-source "$PROJECT_ROOT/lib/print_colors.sh"
+source "$PROJECT_ROOT/ui/topbar.sh"
 
-RESET=$'\e[0m'
 
-options=(
-	"Search"
-	"Library"
-	"HOME"
-	"History"
-	"User"
-)
 selected_option=0;
 SCREEN_WIDTH=$(tput cols)
 COL_WIDTH=$(( $SCREEN_WIDTH / 5 ))
@@ -21,13 +13,7 @@ COL_WIDTH=$(( $SCREEN_WIDTH / 5 ))
 while true; do
 	clear
 
-	for ((i=0; i<${#options[@]}; i++)); do
-        is_selected="false"
-        if [[ $i -eq $selected_option ]]; then
-            is_selected="true"
-        fi
-        print_highlight " ${options[i]} " $is_selected "${GREEN_BLACK}" $COL_WIDTH "center"
-    done
+    draw_topbar $selected_option
 
 	read -rsn1 key
 
