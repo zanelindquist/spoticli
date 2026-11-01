@@ -2,6 +2,7 @@
 
 PROJECT_ROOT="$(dirname "$(dirname "$(realpath "$0")")")"
 source "$PROJECT_ROOT/lib/print_colors.sh"
+source "$PROJECT_ROOT/lib/images.sh"
 
 SCREEN_WIDTH=$(tput cols)
 COL_WIDTH=$(( $SCREEN_WIDTH / 5 ))
@@ -16,7 +17,7 @@ options=(
 
 # Arguments <selected_option>
 draw_topbar() {
-    printf -- '-%.0s' $(seq 1 "$SCREEN_WIDTH"); echo ""
+    print_bars $SCREEN_WIDTH ""
 
     for ((i=0; i<${#options[@]}; i++)); do
         is_selected=0
@@ -28,7 +29,7 @@ draw_topbar() {
 
     echo;
 
-    printf -- '-%.0s' $(seq 1 "$SCREEN_WIDTH"); echo ""
+    print_bars $SCREEN_WIDTH ""
 }
 
 
