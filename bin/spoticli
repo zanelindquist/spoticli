@@ -6,11 +6,15 @@ PROJECT_ROOT="$(dirname "$(dirname "$(realpath "$0")")")"
 case "$1" in
 	login)
         # Arguemnts: <user_fingerprint>
-		"$PROJECT_ROOT/commands/login.sh" $2
+		"$PROJECT_ROOT/commands/login.sh" $2 "${@:3}"
 		;;
     reauth)
         # Arguemnts: <user_id>
-        "$PROJECT_ROOT/commands/reauth.sh" $2
+        "$PROJECT_ROOT/commands/reauth.sh" $2 "${@:3}"
+        ;;
+    streamstate)
+        # Arguemnts: <user_id>
+        "$PROJECT_ROOT/commands/stream_state.sh" $2 "${@:3}"
         ;;
 	*)
 		echo "Usage: spoticli <command>"
