@@ -1,7 +1,10 @@
 #!/bin/bash
 
-GREEN_BLACK='\e[30;42m'
-RESET='\e[0m'
+# Source the file relative to the script's actual location
+PROJECT_ROOT="$(dirname "$(dirname "$(realpath "$0")")")"
+source "$PROJECT_ROOT/lib/print_colors.sh"
+
+RESET=$'\e[0m'
 
 options=(
 	"Search"
@@ -11,17 +14,20 @@ options=(
 	"User"
 )
 selected_option=0;
+SCREEN_WIDTH=$(tput cols)
+COL_WIDTH=$(( $SCREEN_WIDTH / 5 ))
+
 
 while true; do
 	clear
 
 	for ((i=0; i<${#options[@]}; i++)); do
-		if [[ $i -eq $selected_option ]]; then
-			echo -en "${GREEN_BLACK}${options[$i]}${RESET} "
-		else
-			echo -n "${options[$i]} "
-		fi
-	done
+        is_selected="false"
+        if [[ $i -eq $selected_option ]]; then
+            is_selected="true"
+        fi
+        print_highlight " ${options[i]} " $is_selected "${GREEN_BLACK}" $COL_WIDTH "center"
+    done
 
 	read -rsn1 key
 
