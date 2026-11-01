@@ -2,15 +2,20 @@
 
 USER_ID=$1
 PROJECT_ROOT="$(dirname "$(dirname "$(realpath "$0")")")"
+source "$PROJECT_ROOT/lib/print_colors.sh"
 
 response=$(mktemp)
 
 "$PROJECT_ROOT/bin/spoticli" streamstate $USER_ID -c > "$response"
 
 name=$(jq -r '.item.name' < "$response")
+artists=$(jq -r '[.item.artists[].name] | join(", ")' < $response)
+progress_ms=$(jq -r '.progress_ms' < $response)
+duration_ms=$(jq -r '.item.duration_ms' < $response)
+
+print_highlight "$name" 1 "$VIOLET" $SCREEN_WIDTH "center"
+print_highlight "$artists" 1 "$VIOLET" $SCREEN_WIDTH "center"
 
 cat $response
 
 rm $response
-
-echo "You are listening to $name"

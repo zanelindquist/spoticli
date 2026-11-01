@@ -1,5 +1,7 @@
 #!/bin/bash
 
+SCREEN_WIDTH=$(tput cols)
+
 # Straight text colors
 RED=$'\e[38;5;196m'
 ORANGE=$'\e[38;5;208m'
@@ -27,7 +29,7 @@ print_highlight() {
     local text=$1
 
     # Set highlighting
-    if [[ $2 == "true" ]]; then
+    if [[ $2 -ne 0 ]]; then
         text="$3${1}${RESET}"
     fi
 

@@ -19,9 +19,9 @@ draw_topbar() {
     printf -- '-%.0s' $(seq 1 "$SCREEN_WIDTH"); echo ""
 
     for ((i=0; i<${#options[@]}; i++)); do
-        is_selected="false"
+        is_selected=0
         if [[ $i -eq $1 ]]; then
-            is_selected="true"
+            is_selected=1
         fi
         print_highlight " ${options[i]} " $is_selected "${GREEN_BLACK}" $COL_WIDTH "center"
     done
