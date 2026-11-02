@@ -5,6 +5,8 @@
 #   -c: currently playing
 #   -P: pause music
 #   -R: resume music
+#   -B: back (previous track)
+#   -N: next track
 
 USER_ID=$1
 # Pop the user ID off so the flags work correctly
@@ -18,7 +20,7 @@ token=$(get_token $USER_ID)
 
 is_silent=0
 
-while getopts ":scPR" opt; do
+while getopts ":scPRBN" opt; do
     case "$opt" in
         's')
             is_silent=1
@@ -37,6 +39,24 @@ while getopts ":scPR" opt; do
             ;;
         'R')
             play_music $token
+
+            if [[ $is_silent -eq 1 ]] then
+                exit 0
+            else
+                exit $?
+            fi
+            ;;
+        'B')
+            previous_track $token
+
+            if [[ $is_silent -eq 1 ]] then
+                exit 0
+            else
+                exit $?
+            fi
+            ;;      
+        'N')
+            next_track $token
 
             if [[ $is_silent -eq 1 ]] then
                 exit 0

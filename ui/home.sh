@@ -105,6 +105,12 @@ while [[ $is_running -ne 0 ]]; do
                 is_playing=1
             fi
             ;;
+        'n')
+            status=$("$PROJECT_ROOT/bin/spoticli" streamstate $USER_ID -N)
+            ;;
+        'b')
+            status=$("$PROJECT_ROOT/bin/spoticli" streamstate $USER_ID -B)
+            ;;
     esac
 done
 
