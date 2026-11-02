@@ -6,7 +6,7 @@ PROJECT_ROOT="$(dirname "$(dirname "$(realpath "$0")")")"
 source "$PROJECT_ROOT/ui/topbar.sh"
 
 
-selected_option=0;
+selected_option=2;
 is_focused=1;
 
 

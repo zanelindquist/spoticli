@@ -70,7 +70,7 @@ if [[ $user_id != "" ]]; then
 	    "$PROJECT_ROOT/ui/spoticli.sh" $user_id
     fi
 else
-	"$PROJECT_ROOT/bin/spoticli" login $fingerprint
+    user_id=$("$PROJECT_ROOT/bin/spoticli" login $fingerprint)
 
 	"$PROJECT_ROOT/ui/spoticli.sh" $user_id
 fi

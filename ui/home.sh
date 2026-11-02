@@ -6,10 +6,14 @@ source "$PROJECT_ROOT/lib/print_colors.sh"
 source "$PROJECT_ROOT/lib/images.sh"
 source "$PROJECT_ROOT/ui/topbar.sh"
 
+# Render optimization variables
 is_running=1
 prev_album_image=""
 prev_progress_ms=-1
 prev_name=""
+
+# Player variables
+is_playing=1
 
 while [[ $is_running -ne 0 ]]; do
     response=$(mktemp)
@@ -19,6 +23,8 @@ while [[ $is_running -ne 0 ]]; do
     name=$(jq -r '.item.name' < "$response")
     artists=$(jq -r '[.item.artists[].name] | join(", ")' < $response)
     image_url=$(jq -r '.item.album.images[-1].url' < $response)
+    is_playing=$(jq -r '.is_playing' < $response)
+    if [[ $is_playing == "true" ]]; then is_playing=1; else is_playing=0; fi
 
     progress_ms=$(jq -r '.progress_ms' < $response)
     duration_ms=$(jq -r '.item.duration_ms' < $response)
@@ -83,9 +89,22 @@ while [[ $is_running -ne 0 ]]; do
        fi
     fi
 
-       rm $response
+    # Remove temp file
+    rm $response
 
-    sleep 3
-
+    # Wait 3 seconds and accept keyboard input in this time
+    read -rsn1 -t 3 key
+    
+    case $key in
+        'p')
+            if [[ $is_playing -eq 1 ]]; then
+                status=$("$PROJECT_ROOT/bin/spoticli" streamstate $USER_ID -P)
+                is_playing=0
+            else
+                status=$("$PROJECT_ROOT/bin/spoticli" streamstate $USER_ID -R)
+                is_playing=1
+            fi
+            ;;
+    esac
 done
 

@@ -3,6 +3,8 @@
 # Arguments "user_id" [OPTIONS]
 # OPTIONS:
 #   -c: currently playing
+#   -P: pause music
+#   -R: resume music
 
 USER_ID=$1
 # Pop the user ID off so the flags work correctly
@@ -14,12 +16,33 @@ source "$PROJECT_ROOT/lib/requests.sh"
 
 token=$(get_token $USER_ID)
 
-while getopts ":c" opt; do
+is_silent=0
+
+while getopts ":scPR" opt; do
     case "$opt" in
+        's')
+            is_silent=1
+            ;;
         'c')
             currently_playing $token
             ;;
-        *)
-            echo "Error: streamstate handling unknown flag"
+        'P')
+            pause_music $token
+
+            if [[ $is_silent -eq 1 ]] then
+                exit 0
+            else
+                exit $?
+            fi
+            ;;
+        'R')
+            play_music $token
+
+            if [[ $is_silent -eq 1 ]] then
+                exit 0
+            else
+                exit $?
+            fi
+            ;;
     esac
 done

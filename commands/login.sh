@@ -24,7 +24,7 @@ encoded_redirect_uri=$(python3 -c 'import urllib.parse, os; print(urllib.parse.q
 printf '\nSpotiCLI Spotify Login\n\n'
 printf 'Open this URL in your browser:\n\n'
 
-auth_url="https://accounts.spotify.com/authorize?client_id=${SPOTIFY_CLIENT_ID}&response_type=code&redirect_uri=${encoded_redirect_uri}&state=${session_id}&scope=user-read-private%20user-read-email%20user-read-currently-playing"
+auth_url="https://accounts.spotify.com/authorize?client_id=${SPOTIFY_CLIENT_ID}&response_type=code&redirect_uri=${encoded_redirect_uri}&state=${session_id}&scope=user-read-private%20user-read-email%20user-read-currently-playing%20user-modify-playback-state"
 
 printf '%s\n\n' $auth_url
 
@@ -38,6 +38,8 @@ if [[ user_id != "" ]]; then
 
     printf '\nYou are now connected to Spotify.\n'
     printf 'User ID: %s' $user_id
+
+    echo "$user_id"
 else
     printf '\nLogin failed. Please try again.\n' >&2
     exit 1
