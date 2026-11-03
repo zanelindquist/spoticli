@@ -43,20 +43,15 @@ if [[ "$is_verbose" == "true" ]]; then
 fi
 
 if [[ $user_id != "" ]]; then
-	# Enter shell with the user's id
-    
     # Check for reauth
-    if "$PROJECT_ROOT/bin/spoticli" reauth $user_id; then
-        status=0
-    else
-        status=$?
-    fi
+    reauth_status=$("$PROJECT_ROOT/bin/spoticli" reauth $user_id)
+    echo "Reauth Status: $reauth_status"
 
-    if [[ $status -eq 1 ]]; then
+    if [[ $reauth_status -eq 1 ]]; then
         echo "Error: Fatal error caused program to quit"
         exit 1
     # This means reauth failed because the refresh token expired
-    elif [[ $status -eq 2 ]]; then
+    elif [[ $reauth_status -eq 2 ]]; then
         echo -e "\e[33mSpotify authorization expired. Redirecting to login...\e[0m"
         # Delete the key mapping from the public key to users, because the user session should be regenerated
         sed -i "/$fingerprint/d" "$PROJECT_ROOT/data/key_user_mappings"

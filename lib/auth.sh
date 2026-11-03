@@ -115,7 +115,7 @@ reauth() {
     expires_at=$(cat "$user_path/token_expires_at")
     current_time=$(python3 -c "import time; print(int(time.time()));")
 
-    if [[ -z $expires_at || $current_time -gt $expires_at ]]; then
+    if [[ -z $expires_at || "$expires_at" == "" || $current_time -gt $expires_at ]]; then
         # Do reauth flow
         refresh_token=$(cat "$user_path/refresh_token")
         auth_base64=$(printf '%s:%s' "$SPOTIFY_CLIENT_ID" "$SPOTIFY_CLIENT_SECRET" | base64 -w 0)
@@ -156,7 +156,7 @@ reauth() {
         fi
 
         echo $access_token > "$user_path/token"
-        echo "$(current_time + expires_in)" > "$user_path/token_expires_at"
+        echo "$((current_time + expires_in))" > "$user_path/token_expires_at"
 
         return 0
     fi

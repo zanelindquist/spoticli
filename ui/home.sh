@@ -20,6 +20,11 @@ while [[ $is_running -ne 0 ]]; do
 
     "$PROJECT_ROOT/bin/spoticli" streamstate $USER_ID -c > "$response"
 
+    if [[ "$response" == "" ]]; then
+        echo "Error: No response body"
+        exit 1
+    fi
+
     name=$(jq -r '.item.name' < "$response")
     artists=$(jq -r '[.item.artists[].name] | join(", ")' < $response)
     image_url=$(jq -r '.item.album.images[-1].url' < $response)
