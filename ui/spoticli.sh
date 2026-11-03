@@ -7,15 +7,22 @@ source "$PROJECT_ROOT/ui/topbar.sh"
 
 
 selected_option=2;
-is_focused=1;
+is_focused=0;
 
+# By default, display the home screen first thing
+"$PROJECT_ROOT/ui/home.sh" $USER_ID
 
+is_focused=1
+
+# Loop over keys
 while true; do
 	clear
 
     draw_topbar $selected_option
 
-	read -rsn1 key
+    read -rsn1 key
+
+    echo -E $key
 
 	case "$key" in
 		$'\x1b')
@@ -44,7 +51,8 @@ while true; do
             if [[ $selected_option == 2 ]]; then
                 is_focused=0
                 "$PROJECT_ROOT/ui/home.sh" $USER_ID
-                read -r
+                # When the program returns back, set the focus to the top bar
+                is_focused=1
             fi
 			;;
 		q)

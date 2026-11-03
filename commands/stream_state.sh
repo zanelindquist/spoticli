@@ -7,6 +7,7 @@
 #   -R: resume music
 #   -B: back (previous track)
 #   -N: next track
+#   -S "0|1": set shuffle
 
 USER_ID=$1
 # Pop the user ID off so the flags work correctly
@@ -20,7 +21,7 @@ token=$(get_token $USER_ID)
 
 is_silent=0
 
-while getopts ":scPRBN" opt; do
+while getopts ":scPRBNS:" opt; do
     case "$opt" in
         's')
             is_silent=1
@@ -64,5 +65,20 @@ while getopts ":scPRBN" opt; do
                 exit $?
             fi
             ;;
-    esac
+        'S')
+            is_shuffle=$OPTARG
+            if [[ $is_shuffle != 0 && $is_shuffle != 1 ]]; then
+                echo "Error: stream_state -S: parameter must be 0 or 1"
+                exit 1
+            fi
+
+            set_shuffle $token $is_shuffle
+
+            if [[ $is_silent -eq 1 ]] then
+                exit 0
+            else
+                exit $?
+            fi
+            ;;
+     esac
 done

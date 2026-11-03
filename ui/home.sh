@@ -12,23 +12,50 @@ prev_album_image=""
 prev_progress_ms=-1
 prev_name=""
 
+current_line=1
+progress_bar_line_num=0
+
 # Player variables
 is_playing=1
+is_shuffle=0
 
 
+#Arguments: current_line<ptr> is_playing? is_shuffle?
 print_commands() {
+    #declare -n line_num=$1
     # Arguments: "text" highlighted? "color" <width> "left,center,right"
-    print_highlight "(p) Pause/play    (n) Next track    (b) Previous track" 1 "$CHARCOAL" $SCREEN_WIDTH "center"
+    print_highlight "(p) Pause/play    (n) Next track    (b) Previous track    (s) toggle shuffle" 1 "$CHARCOAL" $SCREEN_WIDTH "center"
+    print_highlight "playing" $2 $GREEN_BLACK $(( SCREEN_WIDTH / 2 )) "right"
+    echo -en "    "
+    print_highlight "shuffle" $3 $GREEN_BLACK $(( SCREEN_WIDTH / 2 )) "left"
+    ((current_line+=2))
+}
+
+print_progress_bar() {
+    printf "\n%*s|" "$left_progress_indent" ""
+    print_bars $progress_bars ""
+    printf "⊙"
+    printf "$CHARCOAL"
+    print_bars $progress_bars_remaining ""
+    printf "${RESET}|\n"
 }
 
 
 while [[ $is_running -ne 0 ]]; do
-    response=$(mktemp)
+    response=$(mktemp) || return 1
 
-    "$PROJECT_ROOT/bin/spoticli" streamstate $USER_ID -c > "$response"
+    "$PROJECT_ROOT/bin/spoticli" streamstate "$USER_ID" -c > "$response"
 
-    if [[ "$response" == "" ]]; then
-        echo "Error: No response body"
+    # Check if file still exists
+    if [[ ! -f "$response" ]]; then
+        echo "Client closed. Temp file could not be located"
+        exit 1
+    fi
+
+    # Check if file is empty
+    if [[ ! -s "$response" ]]; then
+        echo "Error: No response body for file"
+        rm -f "$response"
         exit 1
     fi
 
@@ -45,20 +72,32 @@ while [[ $is_running -ne 0 ]]; do
     progress_bars=$( echo "($SCREEN_WIDTH / $progress_width_ratio) * $progress_ms / $duration_ms" | bc )
     progress_bars_remaining=$( echo "($SCREEN_WIDTH / $progress_width_ratio) - $progress_bars - 1" | bc )
 
+    if [[ -v $name || "$name" == "" ]]; then
+        echo "No currently playing song"
+        read -rs
+        exit 1
+    fi
+
     # Print stuff
     # Check if we need to redraw entire screen
     if [[ $prev_album_image != $image_url ]]; then
         prev_album_image=$image_url
         prev_progress_ms=-1
+
         clear
+        current_line=1
         draw_topbar 2
-        print_commands
+        ((current_line+=3))
+
+        print_commands $current_line $is_playing $is_shuffle
         echo -e "\n\n"
         indent_image $image_url $(( SCREEN_WIDTH / 2 )) $(( SCREEN_WIDTH / 4 )) 1
         echo;
+        ((current_line+=( SCREEN_WIDTH / 2) + 2 + 1 ))
     # Otherwise, erase the last couple of lines and just redraw the progress
     fi
 
+    # If this is the first iteration, don't write anything...?
     if [[ $prev_progress_ms -eq -1 ]]; then
         echo -e "\n\n\n"
     fi
@@ -71,10 +110,10 @@ while [[ $is_running -ne 0 ]]; do
         if [[ "${prev_name}" != "${name}" ]]; then
             prev_name=$name
 
-            # Clear up 4 lines
+            # Clear up 4 lines to the bottom
             printf "\e[4A\e[J"
             # Now redraw progress bar
-            printf "\n%*s|" "$left_progress_indent" "";
+            printf "\n%*s|" "$left_progress_indent" ""
             print_bars $progress_bars ""
             printf "⊙"
             printf "$CHARCOAL"
@@ -86,8 +125,8 @@ while [[ $is_running -ne 0 ]]; do
             print_highlight "$artists" 1 "$VIOLET" $SCREEN_WIDTH "center"
         else
 
-            # Go up 4 lines and clear it
-            printf "\033[s\033[5A\033[K"
+            # Go up 4 lines and clear only it
+            printf "\e[s\e[5A\e[K"
 
             printf "\n%*s|" "$left_progress_indent" "";
             print_bars $progress_bars ""
@@ -106,7 +145,17 @@ while [[ $is_running -ne 0 ]]; do
     rm $response
 
     # Wait 3 seconds and accept keyboard input in this time
-    read -rsn1 -t 3 key
+    read -r -s -n 1 -t 3 key
+
+    if [[ $key == $'\e' ]]; then
+        # Check for other characters being pressed (i.e. an arrow key)
+        read -s -n 2 -t 0.002 next_chars
+
+        if [[ -z $next_chars ]]; then
+            # Handle escape pressed
+            exit 0
+        fi
+    fi
     
     case $key in
         'p')
@@ -117,12 +166,32 @@ while [[ $is_running -ne 0 ]]; do
                 status=$("$PROJECT_ROOT/bin/spoticli" streamstate $USER_ID -R)
                 is_playing=1
             fi
+
+            if [[ $status -eq 200 ]]; then
+                printf "\e[4;0H\e[K\e[K"
+                print_commands $current_line $is_playing $is_shuffle
+                # Restore cursor position
+                printf "\e[u"
+            fi
             ;;
         'n')
             status=$("$PROJECT_ROOT/bin/spoticli" streamstate $USER_ID -N)
             ;;
         'b')
             status=$("$PROJECT_ROOT/bin/spoticli" streamstate $USER_ID -B)
+            ;;
+        's')
+
+            status=$("$PROJECT_ROOT/bin/spoticli" streamstate $USER_ID -S $is_shuffle)
+            if [[ $status -eq 200 ]]; then
+                printf "\e[4;0H\e[K\e[K"
+                print_commands $current_line $is_playing $is_shuffle
+                # Restore cursor position
+                printf "\e[u"
+
+                is_shuffle=$(( (is_shuffle + 1) % 2))
+            fi
+
             ;;
     esac
 done
