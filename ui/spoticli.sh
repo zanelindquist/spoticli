@@ -9,6 +9,8 @@ source "$PROJECT_ROOT/ui/topbar.sh"
 selected_option=2;
 is_focused=0;
 
+echo "ui/spoticli.sh $USER_ID"
+
 # By default, display the home screen first thing
 "$PROJECT_ROOT/ui/home.sh" $USER_ID
 

@@ -21,13 +21,16 @@ token=$(get_token $USER_ID)
 
 is_silent=0
 
-while getopts ":scPRBNS:" opt; do
+while getopts ":scqPRBNS:" opt; do
     case "$opt" in
         's')
             is_silent=1
             ;;
         'c')
             currently_playing $token
+            ;;
+        'q')
+            get_queue $token
             ;;
         'P')
             pause_music $token

@@ -12,6 +12,8 @@ prev_album_image=""
 prev_progress_ms=-1
 prev_name=""
 
+view_mode="now-playing"
+
 current_line=1
 progress_bar_line_num=0
 
@@ -19,12 +21,12 @@ progress_bar_line_num=0
 is_playing=1
 is_shuffle=0
 
-
 #Arguments: current_line<ptr> is_playing? is_shuffle?
 print_commands() {
     #declare -n line_num=$1
     # Arguments: "text" highlighted? "color" <width> "left,center,right"
-    print_highlight "(p) Pause/play    (n) Next track    (b) Previous track    (s) toggle shuffle" 1 "$CHARCOAL" $SCREEN_WIDTH "center"
+    print_highlight "(esc) Navigate topbar (p) Pause/play    (n) Next track    (b) Previous track" 1 "$CHARCOAL" $SCREEN_WIDTH "center"
+    print_highlight "(s) toggle shuffle (q) view queue" 1 "$CHARCOAL" $SCREEN_WIDTH "center"
     print_highlight "playing" $2 $GREEN_BLACK $(( SCREEN_WIDTH / 2 )) "right"
     echo -en "    "
     print_highlight "shuffle" $3 $GREEN_BLACK $(( SCREEN_WIDTH / 2 )) "left"
@@ -42,107 +44,112 @@ print_progress_bar() {
 
 
 while [[ $is_running -ne 0 ]]; do
-    response=$(mktemp) || return 1
+    if [[ $view_mode == "now-playing" ]]; then
+        response=$(mktemp) || return 1
 
-    "$PROJECT_ROOT/bin/spoticli" streamstate "$USER_ID" -c > "$response"
+        "$PROJECT_ROOT/bin/spoticli" streamstate "$USER_ID" -c > "$response"
 
-    # Check if file still exists
-    if [[ ! -f "$response" ]]; then
-        echo "Client closed. Temp file could not be located"
-        exit 1
+        # Check if file still exists
+        if [[ ! -f "$response" ]]; then
+            echo "Client closed. Temp file could not be located"
+            exit 1
+        fi
+
+        # Check if file is empty
+        if [[ ! -s "$response" ]]; then
+            echo "Error: No response body for file"
+            rm -f "$response"
+            exit 1
+        fi
+
+        name=$(jq -r '.item.name' < "$response")
+        artists=$(jq -r '[.item.artists[].name] | join(", ")' < $response)
+        image_url=$(jq -r '.item.album.images[-1].url' < $response)
+        is_playing=$(jq -r '.is_playing' < $response)
+        if [[ $is_playing == "true" ]]; then is_playing=1; else is_playing=0; fi
+
+        progress_ms=$(jq -r '.progress_ms' < $response)
+        duration_ms=$(jq -r '.item.duration_ms' < $response)
+        progress_width_ratio=1.5
+        left_progress_indent=$( echo "($SCREEN_WIDTH - $SCREEN_WIDTH / $progress_width_ratio) / 2" | bc )
+        progress_bars=$( echo "($SCREEN_WIDTH / $progress_width_ratio) * $progress_ms / $duration_ms" | bc )
+        progress_bars_remaining=$( echo "($SCREEN_WIDTH / $progress_width_ratio) - $progress_bars - 1" | bc )
+
+        if [[ -v $name || "$name" == "" ]]; then
+            echo "No currently playing song"
+            read -rs
+            exit 1
+        fi
+
+        # Print stuff
+        # Check if we need to redraw entire screen
+        if [[ $prev_album_image != $image_url ]]; then
+            prev_album_image=$image_url
+            prev_progress_ms=-1
+
+            clear
+            current_line=1
+            draw_topbar 2
+            ((current_line+=3))
+
+            print_commands $current_line $is_playing $is_shuffle
+            echo -e "\n\n"
+            indent_image $image_url $(( SCREEN_WIDTH / 2 )) $(( SCREEN_WIDTH / 4 )) 1
+            echo;
+            ((current_line+=( SCREEN_WIDTH / 2) + 2 + 1 ))
+        # Otherwise, erase the last couple of lines and just redraw the progress
+        fi
+
+        # If this is the first iteration, don't write anything...?
+        if [[ $prev_progress_ms -eq -1 ]]; then
+            echo -e "\n\n\n"
+        fi
+
+        # Only redraw the bar if the track's progress has changed
+        if [[ $prev_progress_ms -ne $progress_ms ]]; then
+            prev_progress_ms=$progress_ms
+
+            # If we need to redraw the name
+            if [[ "${prev_name}" != "${name}" ]]; then
+                prev_name=$name
+
+                # Clear up 4 lines to the bottom
+                printf "\e[5A\e[J"
+                # Now redraw progress bar
+                printf "\n%*s|" "$left_progress_indent" ""
+                print_bars $progress_bars ""
+                printf "⊙"
+                printf "$CHARCOAL"
+                print_bars $progress_bars_remaining ""
+                printf "${RESET}|\n"
+
+                echo -e "\n";
+                print_highlight "$name" 1 "$VIOLET" $SCREEN_WIDTH "center"
+                print_highlight "$artists" 1 "$VIOLET" $SCREEN_WIDTH "center"
+            else
+
+                # Go up 4 lines and clear only it
+                printf "\e[s\e[5A\e[K"
+
+                printf "\n%*s|" "$left_progress_indent" "";
+                print_bars $progress_bars ""
+                printf "⊙"
+                printf "$CHARCOAL"
+                print_bars $progress_bars_remaining ""
+                printf "${RESET}|\n"
+
+                # Restore cursor position
+                printf "\e[u"
+
+           fi
+        fi
+
+        # Remove temp file
+        rm $response
+
+    # elif [[ "$view_mode" == "queue" ]]; then
+        
     fi
-
-    # Check if file is empty
-    if [[ ! -s "$response" ]]; then
-        echo "Error: No response body for file"
-        rm -f "$response"
-        exit 1
-    fi
-
-    name=$(jq -r '.item.name' < "$response")
-    artists=$(jq -r '[.item.artists[].name] | join(", ")' < $response)
-    image_url=$(jq -r '.item.album.images[-1].url' < $response)
-    is_playing=$(jq -r '.is_playing' < $response)
-    if [[ $is_playing == "true" ]]; then is_playing=1; else is_playing=0; fi
-
-    progress_ms=$(jq -r '.progress_ms' < $response)
-    duration_ms=$(jq -r '.item.duration_ms' < $response)
-    progress_width_ratio=1.5
-    left_progress_indent=$( echo "($SCREEN_WIDTH - $SCREEN_WIDTH / $progress_width_ratio) / 2" | bc )
-    progress_bars=$( echo "($SCREEN_WIDTH / $progress_width_ratio) * $progress_ms / $duration_ms" | bc )
-    progress_bars_remaining=$( echo "($SCREEN_WIDTH / $progress_width_ratio) - $progress_bars - 1" | bc )
-
-    if [[ -v $name || "$name" == "" ]]; then
-        echo "No currently playing song"
-        read -rs
-        exit 1
-    fi
-
-    # Print stuff
-    # Check if we need to redraw entire screen
-    if [[ $prev_album_image != $image_url ]]; then
-        prev_album_image=$image_url
-        prev_progress_ms=-1
-
-        clear
-        current_line=1
-        draw_topbar 2
-        ((current_line+=3))
-
-        print_commands $current_line $is_playing $is_shuffle
-        echo -e "\n\n"
-        indent_image $image_url $(( SCREEN_WIDTH / 2 )) $(( SCREEN_WIDTH / 4 )) 1
-        echo;
-        ((current_line+=( SCREEN_WIDTH / 2) + 2 + 1 ))
-    # Otherwise, erase the last couple of lines and just redraw the progress
-    fi
-
-    # If this is the first iteration, don't write anything...?
-    if [[ $prev_progress_ms -eq -1 ]]; then
-        echo -e "\n\n\n"
-    fi
-
-    # Only redraw the bar if the track's progress has changed
-    if [[ $prev_progress_ms -ne $progress_ms ]]; then
-        prev_progress_ms=$progress_ms
-
-        # If we need to redraw the name
-        if [[ "${prev_name}" != "${name}" ]]; then
-            prev_name=$name
-
-            # Clear up 4 lines to the bottom
-            printf "\e[4A\e[J"
-            # Now redraw progress bar
-            printf "\n%*s|" "$left_progress_indent" ""
-            print_bars $progress_bars ""
-            printf "⊙"
-            printf "$CHARCOAL"
-            print_bars $progress_bars_remaining ""
-            printf "${RESET}|\n"
-
-            echo -e "\n";
-            print_highlight "$name" 1 "$VIOLET" $SCREEN_WIDTH "center"
-            print_highlight "$artists" 1 "$VIOLET" $SCREEN_WIDTH "center"
-        else
-
-            # Go up 4 lines and clear only it
-            printf "\e[s\e[5A\e[K"
-
-            printf "\n%*s|" "$left_progress_indent" "";
-            print_bars $progress_bars ""
-            printf "⊙"
-            printf "$CHARCOAL"
-            print_bars $progress_bars_remaining ""
-            printf "${RESET}|\n"
-
-            # Restore cursor position
-            printf "\e[u"
-
-       fi
-    fi
-
-    # Remove temp file
-    rm $response
 
     # Wait 3 seconds and accept keyboard input in this time
     read -r -s -n 1 -t 3 key
@@ -156,7 +163,7 @@ while [[ $is_running -ne 0 ]]; do
             exit 0
         fi
     fi
-    
+
     case $key in
         'p')
             if [[ $is_playing -eq 1 ]]; then
@@ -191,8 +198,23 @@ while [[ $is_running -ne 0 ]]; do
 
                 is_shuffle=$(( (is_shuffle + 1) % 2))
             fi
+            ;;
+        'q')
+            view_mode="queue"
+
+            clear
+
+            draw_topbar 2
+            print_commands $current_line $is_playing $is_shuffle
+
+            response=$(mktemp) || return 1
+
+            "$PROJECT_ROOT/bin/spoticli" streamstate $USER_ID -q > $response
+
+            cat $response
 
             ;;
+
     esac
 done
 

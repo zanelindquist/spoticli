@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euo pipefail
+set -eo pipefail
 
 # Source functions
 source ./lib/user_mapping.sh
@@ -36,7 +36,7 @@ fi
 
 # Determine if the user has already authorized and has a token
 # Get user's id from their fingerprint
-user_id=$(get_user_from_fingerprint $fingerprint)
+user_id=$(get_user_from_fingerprint $fingerprint || "")
 
 if [[ "$is_verbose" == "true" ]]; then
     echo "User id: $user_id"
@@ -67,5 +67,11 @@ if [[ $user_id != "" ]]; then
 else
     user_id=$("$PROJECT_ROOT/bin/spoticli" login $fingerprint)
 
-	"$PROJECT_ROOT/ui/spoticli.sh" $user_id
+    if [[ "$is_verbose" == "true" ]]; then
+        printf 'User ID: %s' $user_id
+        echo -e "\nPress any key to continue...."
+        read -r
+    fi
+
+	"$PROJECT_ROOT/ui/spoticli.sh" "$user_id"
 fi

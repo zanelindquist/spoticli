@@ -2,10 +2,11 @@
 
 PROJECT_ROOT="$(dirname "$(dirname "$(realpath "$0")")")"
 
+
 # Argument 1 should always be a command
 case "$1" in
 	login)
-        # Arguemnts: <user_fingerprint>
+        # Arguemnts: <user_fingerprint> user_id<ptr>
 		"$PROJECT_ROOT/commands/login.sh" $2 "${@:3}"
 		;;
     reauth)

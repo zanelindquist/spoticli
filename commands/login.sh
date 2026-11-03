@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 
-# Arguements: <user_fingerprint>
+# Arguements: <user_fingerprint> user_id<ptr>
 
 set -euo pipefail
 
 PROJECT_ROOT="$(dirname "$(dirname "$(realpath "$0")")")"
-
 source "$PROJECT_ROOT/lib/auth.sh"
+
 
 # Load local development configuration if available.
 if [[ -f "$PROJECT_ROOT/config/local.bash.env" ]]; then
@@ -21,23 +21,22 @@ state=$(auth_get_state "$session_id")
 
 encoded_redirect_uri=$(python3 -c 'import urllib.parse, os; print(urllib.parse.quote(os.environ["SPOTIFY_REDIRECT_URI"], safe=""))')
 
-printf '\nSpotiCLI Spotify Login\n\n'
-printf 'Open this URL in your browser:\n\n'
+printf '\nSpotiCLI Spotify Login\n\n' >&2
+printf 'Open this URL in your browser:\n\n' >&2
 
-auth_url="https://accounts.spotify.com/authorize?client_id=${SPOTIFY_CLIENT_ID}&response_type=code&redirect_uri=${encoded_redirect_uri}&state=${session_id}&scope=user-read-private%20user-read-email%20user-read-currently-playing%20user-modify-playback-state"
+auth_url="https://accounts.spotify.com/authorize?client_id=${SPOTIFY_CLIENT_ID}&response_type=code&redirect_uri=${encoded_redirect_uri}&state=${session_id}&scope=user-read-private%20user-read-email%20user-read-currently-playing%20user-modify-playback-state%20user-read-playback-state"
 
-printf '%s\n\n' $auth_url
+printf '%s\n\n' $auth_url >&2
 
 # Wait for the auth flow to return a user_id
-auth_wait $session_id user_id
+auth_wait $session_id user_id >&2
 
 if [[ user_id != "" ]]; then
     # Add a row to the user fingerprint mapping file now that we have both pieces
     
     echo "$1:$user_id" >> "$PROJECT_ROOT/data/key_user_mappings"
 
-    printf '\nYou are now connected to Spotify.\n'
-    printf 'User ID: %s' $user_id
+    printf '\nYou are now connected to Spotify.\n' >&2
 
     echo "$user_id"
 else

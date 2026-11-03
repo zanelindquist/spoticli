@@ -62,3 +62,11 @@ set_shuffle(){
 
     echo "$status"
 }
+# Arguments: "token"
+get_queue() {
+    token=$1
+    auth_header="Authorization: Bearer ${token}"
+    response=$(curl -s "${url}/me/player/queue" -H "$auth_header")
+
+    echo "$response"
+}
