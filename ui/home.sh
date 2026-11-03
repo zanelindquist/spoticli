@@ -15,6 +15,13 @@ prev_name=""
 # Player variables
 is_playing=1
 
+
+print_commands() {
+    # Arguments: "text" highlighted? "color" <width> "left,center,right"
+    print_highlight "(p) Pause/play    (n) Next track    (b) Previous track" 1 "$CHARCOAL" $SCREEN_WIDTH "center"
+}
+
+
 while [[ $is_running -ne 0 ]]; do
     response=$(mktemp)
 
@@ -45,6 +52,7 @@ while [[ $is_running -ne 0 ]]; do
         prev_progress_ms=-1
         clear
         draw_topbar 2
+        print_commands
         echo -e "\n\n"
         indent_image $image_url $(( SCREEN_WIDTH / 2 )) $(( SCREEN_WIDTH / 4 )) 1
         echo;
