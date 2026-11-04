@@ -1,5 +1,6 @@
 data/sessions/*
 data/users/*
+data/cache/*
 data/key_user_mappings
 
 /config/*.env

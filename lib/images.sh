@@ -2,12 +2,7 @@
 
 SCREEN_WIDTH=$(tput cols)
 PROJECT_ROOT="$(dirname "$(dirname "$(realpath "$0")")")"
-
-image_cache_path="$PROJECT_ROOT/data/cache/images"
-if [[ ! -e $image_cache_path ]]; then
-    mkdir -p $image_cache_path
-fi
-
+source "$PROJECT_ROOT/lib/cache.sh"
 
 
 # Arguments: "url" <width> <indent> frame?
@@ -20,10 +15,10 @@ indent_image() {
         printf "┐\n"
     fi
 
-    id="${1##*/}"
-    # echo "$id"
+    # Get the image from the cache
+    image_path=$(get_image_from_cache $1)
 
-    ascii-image-converter -C "$1" -W "$2" --threshold 0 |
+    ascii-image-converter -C "$image_path" -W "$2" --threshold 0 |
     while IFS= read -r line; do
         line=${line##*$'\r'}
         string="%*s%s\n"
