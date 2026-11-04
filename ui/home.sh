@@ -7,6 +7,12 @@ source "$PROJECT_ROOT/lib/images.sh"
 source "$PROJECT_ROOT/lib/components.sh"
 source "$PROJECT_ROOT/ui/topbar.sh"
 
+# Load up the user's temporary directory
+user_temp_dir="$PROJECT_ROOT/data/users/$USER_ID/temp"
+if [[ ! -e $user_temp_dir ]]; then
+    mkdir $user_temp_dir
+fi
+
 # Render optimization variables
 is_running=1
 prev_album_image=""
@@ -128,6 +134,9 @@ while [[ $is_running -ne 0 ]]; do
                 echo -e "\n";
                 print_highlight "$name" 1 "$VIOLET" $SCREEN_WIDTH "center"
                 print_highlight "$artists" 1 "$VIOLET" $SCREEN_WIDTH "center"
+
+                # Reload queue cache
+                "$PROJECT_ROOT/bin/spoticli" streamstate "$USER_ID" -q > "$user_temp_dir/queue"
             else
 
                 # Go up 4 lines and clear only it
@@ -211,16 +220,16 @@ while [[ $is_running -ne 0 ]]; do
                 draw_topbar 2
                 print_commands $current_line $is_playing $is_shuffle
 
-                response=$(mktemp) || return 1
+                response="$user_temp_dir/queue" || return 1
 
-                "$PROJECT_ROOT/bin/spoticli" streamstate "$USER_ID" -q > "$response"
+                if [[ ! -s "$response" ]]; then
+                    "$PROJECT_ROOT/bin/spoticli" streamstate "$USER_ID" -q > "$response"
+                fi
 
                 currently_playing=$(jq -c '.currently_playing' "$response")
                 queue=$(jq -c '.queue' "$response")
 
                 print_songs "$queue" $(( SCREEN_WIDTH / 8 )) $(( SCREEN_WIDTH / 8 * 6 ))
-
-                rm -f "$response"
             else
                 view_mode="now-playing"
                 force_now_playing_redraw=1
