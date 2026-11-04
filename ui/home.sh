@@ -21,6 +21,7 @@ prev_name=""
 
 view_mode="now-playing"
 force_now_playing_redraw=0
+force_queue_redraw=0
 
 current_line=1
 progress_bar_line_num=0
@@ -29,15 +30,26 @@ progress_bar_line_num=0
 is_playing=1
 is_shuffle=0
 
-#Arguments: current_line<ptr> is_playing? is_shuffle?
+queue_offset=0
+queue_page_size=5
+queue_total_size=20
+
+#Arguments: "mode" is_playing? is_shuffle?
 print_commands() {
-    #declare -n line_num=$1
-    # Arguments: "text" highlighted? "color" <width> "left,center,right"
-    print_highlight "(esc) Navigate topbar (p) Pause/play    (n) Next track    (b) Previous track" 1 "$CHARCOAL" $SCREEN_WIDTH "center"
-    print_highlight "(s) toggle shuffle (q) view queue" 1 "$CHARCOAL" $SCREEN_WIDTH "center"
+    if [[ $1 == "now-playing" ]]; then
+        print_highlight "(esc) Navigate topbar (p) Pause/play    (n) Next track    (b) Previous track" 1 "$CHARCOAL" $SCREEN_WIDTH "center"
+        print_highlight "(s) Toggle shuffle (q) View queue" 1 "$CHARCOAL" $SCREEN_WIDTH "center"
+    elif [[ $1 == "queue" ]]; then
+        print_highlight "(esc) Navigate topbar (q) View now playing (n) Next page (b) Previous page" 1 "$CHARCOAL" $SCREEN_WIDTH "center"
+        print_highlight "(d) <number>? Remove track from queue (a) Insert song into queue" 1 "$CHARCOAL" $SCREEN_WIDTH "center"
+    else
+        echo -e "Unknown view mode\n\n"
+    fi
+
     print_highlight "playing" $2 $GREEN_BLACK $(( SCREEN_WIDTH / 2 )) "right"
     echo -en "    "
     print_highlight "shuffle" $3 $GREEN_BLACK $(( SCREEN_WIDTH / 2 )) "left"
+
     ((current_line+=2))
 }
 
@@ -100,7 +112,7 @@ while [[ $is_running -ne 0 ]]; do
             draw_topbar 2
             ((current_line+=3))
 
-            print_commands $current_line $is_playing $is_shuffle
+            print_commands $view_mode $is_playing $is_shuffle
             echo -e "\n\n"
             indent_image $image_url $(( SCREEN_WIDTH / 2 )) $(( SCREEN_WIDTH / 4 )) 1
             echo;
@@ -159,8 +171,29 @@ while [[ $is_running -ne 0 ]]; do
         # Remove temp file
         rm $response
 
-    # elif [[ "$view_mode" == "queue" ]]; then
-        
+    elif [[ "$view_mode" == "queue" && "$force_queue_redraw" -eq 1 ]]; then
+        clear
+
+        draw_topbar 2
+        print_commands $view_mode $is_playing $is_shuffle
+
+        response="$user_temp_dir/queue" || return 1
+
+        if [[ ! -s "$response" ]]; then
+            "$PROJECT_ROOT/bin/spoticli" streamstate "$USER_ID" -q > "$response"
+        fi
+
+        currently_playing=$(jq -c '.currently_playing' "$response")
+        queue=$(jq -c ".queue[${queue_offset}:$(( queue_offset + queue_page_size ))]" "$response")
+
+        echo -e "\n"
+
+        print_highlight "Page $(( ( queue_offset / queue_page_size ) + 1 )) / $(( queue_total_size / queue_page_size ))" 1 "$CHARCOAL" $SCREEN_WIDTH "center"
+
+
+        print_songs "$queue" $(( SCREEN_WIDTH / 8 )) $(( SCREEN_WIDTH / 8 * 6 )) -1 $queue_offset
+
+        force_queue_redraw=0
     fi
 
     # Wait 3 seconds and accept keyboard input in this time
@@ -188,23 +221,41 @@ while [[ $is_running -ne 0 ]]; do
 
             if [[ $status -eq 200 ]]; then
                 printf "\e[4;0H\e[K\e[K"
-                print_commands $current_line $is_playing $is_shuffle
+                print_commands $view_mode $is_playing $is_shuffle
                 # Restore cursor position
                 printf "\e[u"
             fi
             ;;
         'n')
-            status=$("$PROJECT_ROOT/bin/spoticli" streamstate $USER_ID -N)
+            if [[ "$view_mode" == "now-playing" ]]; then
+                status=$("$PROJECT_ROOT/bin/spoticli" streamstate $USER_ID -N)
+            elif [[ "$view_mode" == "queue" ]]; then
+                if (( queue_offset + queue_page_size < $queue_total_size )); then
+                    ((queue_offset+=$queue_page_size))
+                    force_queue_redraw=1
+                fi
+            else
+                echo -e "Unknown view mode\n"
+            fi
             ;;
         'b')
-            status=$("$PROJECT_ROOT/bin/spoticli" streamstate $USER_ID -B)
+            if [[ "$view_mode" == "now-playing" ]]; then
+                status=$("$PROJECT_ROOT/bin/spoticli" streamstate $USER_ID -B)
+            elif [[ "$view_mode" == "queue" ]]; then
+                if (( queue_offset - queue_page_size >= 0 )); then
+                    ((queue_offset-=$queue_page_size))
+                    force_queue_redraw=1
+                fi
+            else
+                echo -e "Unknown view mode\n"
+            fi
             ;;
         's')
 
             status=$("$PROJECT_ROOT/bin/spoticli" streamstate $USER_ID -S $is_shuffle)
             if [[ $status -eq 200 ]]; then
                 printf "\e[4;0H\e[K\e[K"
-                print_commands $current_line $is_playing $is_shuffle
+                print_commands $view_mode $is_playing $is_shuffle
                 # Restore cursor position
                 printf "\e[u"
 
@@ -214,22 +265,7 @@ while [[ $is_running -ne 0 ]]; do
         'q')
             if [[ "$view_mode" == "now-playing" ]]; then
                 view_mode="queue"
-
-                clear
-
-                draw_topbar 2
-                print_commands $current_line $is_playing $is_shuffle
-
-                response="$user_temp_dir/queue" || return 1
-
-                if [[ ! -s "$response" ]]; then
-                    "$PROJECT_ROOT/bin/spoticli" streamstate "$USER_ID" -q > "$response"
-                fi
-
-                currently_playing=$(jq -c '.currently_playing' "$response")
-                queue=$(jq -c '.queue' "$response")
-
-                print_songs "$queue" $(( SCREEN_WIDTH / 8 )) $(( SCREEN_WIDTH / 8 * 6 ))
+                force_queue_redraw=1
             else
                 view_mode="now-playing"
                 force_now_playing_redraw=1
