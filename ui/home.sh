@@ -97,6 +97,8 @@ while [[ $is_running -ne 0 ]]; do
 
         if [[ -v $name || "$name" == "" ]]; then
             echo "No currently playing song"
+            cat $response
+            rm $response
             read -rs
             exit 1
         fi
@@ -177,19 +179,37 @@ while [[ $is_running -ne 0 ]]; do
         draw_topbar 2
         print_commands $view_mode $is_playing $is_shuffle
 
-        response="$user_temp_dir/queue" || return 1
+        # File to cache the user's queue (so we can reference it while they do actions)
+        queue_cache="$user_temp_dir/queue_cache" || return 1
+        # Temp file for the response
+        response=$(mktemp)
 
         if [[ ! -s "$response" ]]; then
             "$PROJECT_ROOT/bin/spoticli" streamstate "$USER_ID" -q > "$response"
         fi
 
+        # Parse out the info
         currently_playing=$(jq -c '.currently_playing' "$response")
+        cp_uri=$(jq -c '.currently_playing.uri' "$response")
         queue=$(jq -c ".queue[${queue_offset}:$(( queue_offset + queue_page_size ))]" "$response")
+
+        # Cache the queue to a file for later
+        # Put the currently playing track in as the 0 index just because
+        echo "0::${cp_uri}" > "$user_temp_dir/queue_cache"
+        index=1
+        while IFS= read -r song; do
+            uri=$(echo "$song" | jq -r ".uri")
+            echo "${index}::${uri}" >> "$user_temp_dir/queue_cache"
+            ((++index))
+        done < <(jq -c ".queue[]" "$response")
 
         echo -e "\n"
 
-        print_highlight "Page $(( ( queue_offset / queue_page_size ) + 1 )) / $(( queue_total_size / queue_page_size ))" 1 "$CHARCOAL" $SCREEN_WIDTH "center"
+# Arguments: "jq song data" <indent_left> <max_width> highlighted? <index>?
+        print_highlight "Now Playing" 1 "$VIOLET" $SCREEN_WIDTH "center"
+        print_song "$currently_playing" $(( SCREEN_WIDTH / 8 )) $(( SCREEN_WIDTH / 8 * 6 )) 0 -1
 
+        print_highlight "Page $(( ( queue_offset / queue_page_size ) + 1 )) / $(( queue_total_size / queue_page_size ))" 1 "$CHARCOAL" $SCREEN_WIDTH "center"
 
         print_songs "$queue" $(( SCREEN_WIDTH / 8 )) $(( SCREEN_WIDTH / 8 * 6 )) -1 $queue_offset
 
