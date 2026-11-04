@@ -4,6 +4,7 @@ USER_ID=$1
 PROJECT_ROOT="$(dirname "$(dirname "$(realpath "$0")")")"
 source "$PROJECT_ROOT/lib/print_colors.sh"
 source "$PROJECT_ROOT/lib/images.sh"
+source "$PROJECT_ROOT/lib/components.sh"
 source "$PROJECT_ROOT/ui/topbar.sh"
 
 # Render optimization variables
@@ -13,6 +14,7 @@ prev_progress_ms=-1
 prev_name=""
 
 view_mode="now-playing"
+force_now_playing_redraw=0
 
 current_line=1
 progress_bar_line_num=0
@@ -44,7 +46,7 @@ print_progress_bar() {
 
 
 while [[ $is_running -ne 0 ]]; do
-    if [[ $view_mode == "now-playing" ]]; then
+    if [[ $view_mode == "now-playing" || $force_now_playing_redraw -eq 1 ]]; then
         response=$(mktemp) || return 1
 
         "$PROJECT_ROOT/bin/spoticli" streamstate "$USER_ID" -c > "$response"
@@ -83,7 +85,7 @@ while [[ $is_running -ne 0 ]]; do
 
         # Print stuff
         # Check if we need to redraw entire screen
-        if [[ $prev_album_image != $image_url ]]; then
+        if [[ $prev_album_image != $image_url || $force_now_playing_redraw -eq 1 ]]; then
             prev_album_image=$image_url
             prev_progress_ms=-1
 
@@ -100,21 +102,21 @@ while [[ $is_running -ne 0 ]]; do
         # Otherwise, erase the last couple of lines and just redraw the progress
         fi
 
-        # If this is the first iteration, don't write anything...?
+        # If this is the first iteration, then write blank space
         if [[ $prev_progress_ms -eq -1 ]]; then
             echo -e "\n\n\n"
         fi
 
         # Only redraw the bar if the track's progress has changed
-        if [[ $prev_progress_ms -ne $progress_ms ]]; then
+        if [[ $prev_progress_ms -ne $progress_ms || $force_now_playing_redraw -eq 1 ]]; then
             prev_progress_ms=$progress_ms
 
             # If we need to redraw the name
-            if [[ "${prev_name}" != "${name}" ]]; then
+            if [[ "${prev_name}" != "${name}" || $force_now_playing_redraw -eq 1 ]]; then
                 prev_name=$name
 
                 # Clear up 4 lines to the bottom
-                printf "\e[5A\e[J"
+                printf "\e[4A\e[J"
                 # Now redraw progress bar
                 printf "\n%*s|" "$left_progress_indent" ""
                 print_bars $progress_bars ""
@@ -141,7 +143,8 @@ while [[ $is_running -ne 0 ]]; do
                 # Restore cursor position
                 printf "\e[u"
 
-           fi
+            fi
+            force_now_playing_redraw=0
         fi
 
         # Remove temp file
@@ -200,19 +203,28 @@ while [[ $is_running -ne 0 ]]; do
             fi
             ;;
         'q')
-            view_mode="queue"
+            if [[ "$view_mode" == "now-playing" ]]; then
+                view_mode="queue"
 
-            clear
+                clear
 
-            draw_topbar 2
-            print_commands $current_line $is_playing $is_shuffle
+                draw_topbar 2
+                print_commands $current_line $is_playing $is_shuffle
 
-            response=$(mktemp) || return 1
+                response=$(mktemp) || return 1
 
-            "$PROJECT_ROOT/bin/spoticli" streamstate $USER_ID -q > $response
+                "$PROJECT_ROOT/bin/spoticli" streamstate "$USER_ID" -q > "$response"
 
-            cat $response
+                currently_playing=$(jq -c '.currently_playing' "$response")
+                queue=$(jq -c '.queue' "$response")
 
+                print_songs "$queue" $(( SCREEN_WIDTH / 8 )) $(( SCREEN_WIDTH / 8 * 6 ))
+
+                rm -f "$response"
+            else
+                view_mode="now-playing"
+                force_now_playing_redraw=1
+            fi
             ;;
 
     esac

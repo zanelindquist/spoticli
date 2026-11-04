@@ -16,6 +16,7 @@ RESET=$'\e[0m'
 # Contrast colors
 GREEN_BLACK=$'\e[30;42m'
 GREEN_WHITE=$'\e[37;42m'
+WHITE_HIGHLIGHT=$'\e[47m'
 
 
 # Print colors

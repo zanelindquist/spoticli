@@ -2,7 +2,7 @@
 
 SCREEN_WIDTH=$(tput cols)
 
-# Arguments: "url" <width> <indent> 4?
+# Arguments: "url" <width> <indent> frame?
 indent_image() {
     local padding=$3
     if [[ $4 -eq 1 ]]; then
@@ -25,7 +25,7 @@ indent_image() {
         printf "%*s" "$padding" ""
         printf "└"
         print_bars "$2" ""
-        printf "┘"
+        printf "┘\n"
     fi
 
 }
