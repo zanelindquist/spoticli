@@ -181,6 +181,12 @@ while [[ $is_running -ne 0 ]]; do
 
         # File to cache the user's queue (so we can reference it while they do actions)
         queue_cache="$user_temp_dir/queue_cache" || return 1
+        unqueue_cache="$user_temp_dir/unqueue_cache"
+        if [[ ! -f $unqueue_cache ]]; then
+            touch $unqueue_cache
+        fi
+        unqueue_uris=$(jq -Rsc 'split("\n") | map(select(length > 0))' "$unqueue_cache")
+
         # Temp file for the response
         response=$(mktemp)
 
@@ -191,7 +197,7 @@ while [[ $is_running -ne 0 ]]; do
         # Parse out the info
         currently_playing=$(jq -c '.currently_playing' "$response")
         cp_uri=$(jq -c '.currently_playing.uri' "$response")
-        queue=$(jq -c ".queue[${queue_offset}:$(( queue_offset + queue_page_size ))]" "$response")
+        queue=$(jq -c --argjson unqueue_uris "$unqueue_uris" ".queue | map(select(.uri as \$u | \$unqueue_uris | index(\$u) | not)) | .[${queue_offset}:$(( queue_offset + queue_page_size ))]" "$response")
 
         # Cache the queue to a file for later
         # Put the currently playing track in as the 0 index just because
@@ -316,14 +322,42 @@ while [[ $is_running -ne 0 ]]; do
                 else
                     number="$digit_1"
                 fi
+                set_bottom_bar "d$number"
+
+                sleep 0.1
+
+                # Define files
+                queue_cache="$user_temp_dir/queue_cache"
+                unqueue_cache="$user_temp_dir/unqueue_cache"
+                logical_queue=$(mktemp)
+
+                # Convert the user-given number to the corresponding number in the queue cache, by adding the number of unqueued songs before this track
+                skipped_count=0
+                index=0
+                while read -r line; do
+                    line_id=$(echo $line | awk -F'::' '{print $2}')
+                    # If the track has been unqueued, increment the skipped values
+                    if grep -q "$line_id" $unqueue_cache; then
+                        ((++skipped_count))
+                    # Otherwise, add it to the logical queue
+                    else
+                        echo "$(( index - skipped_count ))::$line_id" >> $logical_queue
+                    fi
+                    ((++index))
+                done < $queue_cache
 
                 # Find the track ID in the queue cache
-                queue_cache="$user_temp_dir/queue_cache"
-                id=$(awk -F'::' "/^${number}/ {print \$2}" "$queue_cache")
+                id=$(awk -F'::' "/^${number}/ {print \$2}" "$logical_queue")
+                logical_num=$(awk -F'::' "/^${number}/ {print \$1}" "$logical_queue")
 
-                set_bottom_bar "Removed track $id"
-                read -t 1 -rs
-                set_bottom_bar ""
+                # Insert the removed value into the unqueue cache
+                echo $id >> $unqueue_cache
+                # TODO When we add to the queue, we must check for the unqueued song, and remove it from the unqueued cache 
+
+                rm $logical_queue
+
+                # Redraw the queue
+                force_queue_redraw=1
             fi
 
 
