@@ -195,7 +195,7 @@ while [[ $is_running -ne 0 ]]; do
 
         # Cache the queue to a file for later
         # Put the currently playing track in as the 0 index just because
-        echo "0::${cp_uri}" > "$user_temp_dir/queue_cache"
+        echo "0::$cp_uri" > "$user_temp_dir/queue_cache"
         index=1
         while IFS= read -r song; do
             uri=$(echo "$song" | jq -r ".uri")
@@ -206,9 +206,9 @@ while [[ $is_running -ne 0 ]]; do
         echo -e "\n"
 
 # Arguments: "jq song data" <indent_left> <max_width> highlighted? <index>?
-        print_highlight "Now Playing" 1 "$VIOLET" $SCREEN_WIDTH "center"
-        print_song "$currently_playing" $(( SCREEN_WIDTH / 8 )) $(( SCREEN_WIDTH / 8 * 6 )) 0 -1
-
+        # print_highlight "Now Playing" 1 "$VIOLET" $SCREEN_WIDTH "center"
+        # print_song "$currently_playing" $(( SCREEN_WIDTH / 8 )) $(( SCREEN_WIDTH / 8 * 6 )) 0 -1
+        #
         print_highlight "Page $(( ( queue_offset / queue_page_size ) + 1 )) / $(( queue_total_size / queue_page_size ))" 1 "$CHARCOAL" $SCREEN_WIDTH "center"
 
         print_songs "$queue" $(( SCREEN_WIDTH / 8 )) $(( SCREEN_WIDTH / 8 * 6 )) -1 $queue_offset
@@ -291,6 +291,41 @@ while [[ $is_running -ne 0 ]]; do
                 force_now_playing_redraw=1
             fi
             ;;
+        'd')
+            set_bottom_bar "d"
+            if [[ "$view_mode" == "queue" ]]; then
+                read -rs -n 1 digit_1
+                set_bottom_bar "d${digit_1}"
+                sleep 0.1
+
+                # Make sure they are typing a number
+                if [[ ! "$digit_1" =~ [0-9] || "$digit_1" -eq 0 ]]; then
+                    # If they aren't typing a number, continue
+                    continue
+                fi
+                # If the user could still be typing more digits.. wait for that digit
+                number=0
+                if (( digit_1 * 10 < queue_total_size )); then
+                    set_bottom_bar "d${digit_1}"
+                    read -rs -n 1 digit_2
+                    if [[ ! "$digit_2" =~ [0-9] ]]; then
+                        # If they aren't typing a number, continue
+                        continue
+                    fi
+                    number=$(( digit_1 * 10 + digit_2))
+                else
+                    number="$digit_1"
+                fi
+
+                # Find the track ID in the queue cache
+                queue_cache="$user_temp_dir/queue_cache"
+                id=$(awk -F'::' "/^${number}/ {print \$2}" "$queue_cache")
+
+                set_bottom_bar "Removed track $id"
+                read -t 1 -rs
+                set_bottom_bar ""
+            fi
+
 
     esac
 done

@@ -20,8 +20,11 @@ get_image_from_cache() {
     # Parse off the ID
     local id="${1##*/}"
 
-    if [[ $1 == "" ]]; then
-        echo "Error: get_image_from_cache(): Spotify URL missing" >&2
+    if [[ $1 == "" || $id == "null" ]]; then
+        echo "Error: get_image_from_cache(): Spotify URL missing or null" >&2
+        blank_image="$PROJECT_ROOT/data/cache/blank_image"
+        echo "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==" | base64 -d > $blank_image
+        echo $blank_image
     fi
 
     local img_path="$image_cache_path/$id"

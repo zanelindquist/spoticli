@@ -16,7 +16,8 @@ RESET=$'\e[0m'
 # Contrast colors
 GREEN_BLACK=$'\e[30;42m'
 GREEN_WHITE=$'\e[37;42m'
-WHITE_HIGHLIGHT=$'\e[47m'
+WHITE_HIGHLIGHT=$'\e[97;107m'
+CHARCOAL_BACKGROUND=$'\e[48;5;234m'
 
 
 # Print colors
@@ -49,3 +50,26 @@ print_highlight() {
         echo -en $text
     fi
 }
+
+# Arguments: "text"
+set_bottom_bar() {
+    local cols=$(tput cols)
+    local lines=$(tput lines)
+
+    # Hold position
+    tput sc
+    # Go to last line
+    tput cup $((lines - 2)) 0
+
+    if [[ "$1" == "" ]]; then
+        # Remove bottom bar
+        echo -e "\e[2K"
+    else
+        # Print bar
+        printf "%b%-${cols}s%b" "$CHARCOAL_BACKGROUND" "$1" "$RESET"
+    fi
+    # Return to where cursor was
+    tput rc
+}
+
+
