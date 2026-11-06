@@ -3,19 +3,20 @@
 # LRU Caching
 
 PROJECT_ROOT="$(dirname "$(dirname "$(realpath "$0")")")"
-CACHE_SIZE=100
+CACHE_SIZE=50
 
+# Image will be stored in /images/w<width>/854abc3298cab.ansi
 image_cache_path="$PROJECT_ROOT/data/cache/images"
-image_cache_manifest="$PROJECT_ROOT/data/cache/image_manifest"
+# Cache manifests will be stored in /image_manifests/w<width>
+image_cache_manifest_dir="$PROJECT_ROOT/data/cache/image_manifests"
 if [[ ! -e $image_cache_path ]]; then
     mkdir -p $image_cache_path
 fi
-if [[ ! -f $image_cache_manifest ]]; then
-    mkdir -p "$PROJECT_ROOT/data/cache"
-    echo "" > "$PROJECT_ROOT/data/cache/image_manifest"
+if [[ ! -e $image_cache_manifest_dir ]]; then
+    mkdir -p "$PROJECT_ROOT/data/cache/image_manifests"
 fi
 
-# Arguments: <spotify_url>
+# Arguments: "spotify_url" <width>
 get_image_from_cache() {
     # Parse off the ID
     local id="${1##*/}"
@@ -27,32 +28,47 @@ get_image_from_cache() {
         echo $blank_image
     fi
 
-    local img_path="$image_cache_path/$id"
+    # Get the path to the image
+    local image_dir="$image_cache_path/w${2}"
+    local img_path="$image_dir/$id.ansi"
+    local img_manifest="$image_cache_manifest_dir/w${2}"
+    local image_ansi=$(printf "%-${2}s" "None")
+
+    # Create paths to the files if they don't exist
+    if [[ ! -f "$img_manifest" ]]; then
+        touch "$img_manifest"
+    fi
+    if [[ ! -e "$image_dir" ]]; then
+        mkdir -p "$image_dir"
+    fi
 
     # Check if image is in cache
     if [[ -f "$img_path" ]]; then
-        # If it's in the cache, then remove its id from the manifest
-        sed -i "/$id/d" "$image_cache_manifest"
+        # If it's in the cache, then remove its id from the manifest since it will be prepended to the top later
+        sed -i "/$id/d" "$img_manifest"
+
+        # Load the ANSI
+        image_ansi=$(cat "$img_path")
     else
         # If it's not in the cache, download the image, and remove last item if needed
-        local line_count=$(wc -l < "$image_cache_manifest")
+        local line_count=$(wc -l < "$img_manifest")
         if (( line_count >= CACHE_SIZE )); then
             # Find the last index
-            removal_id=$(tail -n 1 "$image_cache_manifest")
+            removal_id=$(tail -n 1 "$img_manifest")
 
             # Remove from end of manifest
-            sed -i '$d' "$image_cache_manifest"
-            # Delete image
-            rm "$image_cache_path/$removal_id"
+            sed -i '$d' "$img_manifest"
+            # Delete image ascii file
+            rm "$image_cache_path/w${2}/$removal_id"
         fi
 
-        # Download image
-        wget -q -O "$image_cache_path/$id" "https://i.scdn.co/image/${id}"
+        image_ansi=$(ascii-image-converter -C "$1" -W "$2" --threshold 0)
+        echo -E "$image_ansi" > "$img_path"
    fi
 
     # Prepend the index to the top
-    sed -i "1i $id" "$image_cache_manifest"
+    sed -i "1i $id" "$img_manifest"
 
-    # Return the image path
-    echo "$img_path"
+    # Return the ansi
+    echo "$image_ansi"
 }

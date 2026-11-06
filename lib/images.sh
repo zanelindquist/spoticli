@@ -16,9 +16,7 @@ indent_image() {
     fi
 
     # Get the image from the cache
-    image_path=$(get_image_from_cache $1)
-
-    ascii-image-converter -C "$image_path" -W "$2" --threshold 0 |
+    get_image_from_cache $1 $2 |
     while IFS= read -r line; do
         line=${line##*$'\r'}
         string="%*s%s\n"
