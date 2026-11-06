@@ -296,8 +296,10 @@ while [[ $is_running -ne 0 ]]; do
             elif [[ "$view_mode" == "queue" ]]; then
                 if (( queue_offset + queue_page_size < queue_total_size )); then
                     ((queue_offset+=$queue_page_size))
-                    force_queue_redraw=1
+                else
+                    queue_offset=0
                 fi
+                force_queue_redraw=1
             else
                 echo -e "Unknown view mode\n"
             fi
@@ -308,8 +310,10 @@ while [[ $is_running -ne 0 ]]; do
             elif [[ "$view_mode" == "queue" ]]; then
                 if (( queue_offset - queue_page_size >= 0 )); then
                     ((queue_offset-=$queue_page_size))
-                    force_queue_redraw=1
+                else
+                    queue_offset=$(( queue_total_size - queue_page_size + (queue_total_size % queue_page_size) ))
                 fi
+                force_queue_redraw=1
             else
                 echo -e "Unknown view mode\n"
             fi
@@ -390,7 +394,7 @@ while [[ $is_running -ne 0 ]]; do
                 logical_num=$(awk -F'::' "/^${number}/ {print \$1}" "$logical_queue")
 
                 # Insert the removed value into the unqueue cache
-                echo -e "$id\n" >> $unqueue_cache
+                echo "$id" >> $unqueue_cache
 
                 rm $logical_queue
 
