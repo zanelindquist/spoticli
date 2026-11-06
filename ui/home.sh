@@ -116,12 +116,20 @@ while [[ $is_running -ne 0 ]]; do
             # Skip the song
             "$PROJECT_ROOT/bin/spoticli" streamstate $USER_ID -N
 
+            echo -e "Skipping song $uri\nUnqueue length: $(wc -l "$unqueue_cache")"
+
             # Remove the song from the unqueue
             sed -i "/$uri/d" "$unqueue_cache"
+            echo -e "Unqueue length POST: $(wc -l "$unqueue_cache")"
         fi
 
         # Force a queue redraw to update the queue, now that a new song is playing
-        force_queue_redraw=1
+        if [[ "$view_mode" == "queue" ]]; then
+            prev_name="$name"
+            force_queue_redraw=1
+        else
+            force_now_playing_redraw=1
+        fi
     fi
 
     if [[ $view_mode == "now-playing" || $force_now_playing_redraw -eq 1 ]]; then
@@ -182,6 +190,7 @@ while [[ $is_running -ne 0 ]]; do
                 printf "\n%*s|" "$left_progress_indent" "";
                 print_bars $progress_bars ""
                 printf "⊙"
+
                 printf "$CHARCOAL"
                 print_bars $progress_bars_remaining ""
                 printf "${RESET}|\n"
@@ -222,7 +231,6 @@ while [[ $is_running -ne 0 ]]; do
         cp_uri=$(jq -c '.currently_playing.uri' "$response")
         queue=$(jq -c --argjson unqueue_uris "$unqueue_uris" ".queue | map(select(.uri as \$u | \$unqueue_uris | index(\$u) | not)) | .[${queue_offset}:$(( queue_offset + queue_page_size ))]" "$response")
 
-
         # Cache the queue to a file for later
         # Put the currently playing track in as the 0 index just because
         echo "0::$cp_uri" > "$user_temp_dir/queue_cache"
@@ -233,12 +241,13 @@ while [[ $is_running -ne 0 ]]; do
             ((++index))
         done < <(jq -c ".queue[]" "$response")
 
+        queue_total_size=$index
+
         echo -e "\n"
 
-# Arguments: "jq song data" <indent_left> <max_width> highlighted? <index>?
-        # print_highlight "Now Playing" 1 "$VIOLET" $SCREEN_WIDTH "center"
-        # print_song "$currently_playing" $(( SCREEN_WIDTH / 8 )) $(( SCREEN_WIDTH / 8 * 6 )) 0 -1
-        #
+        print_highlight "Now Playing" 1 "$VIOLET" $SCREEN_WIDTH "center"
+        print_song "$currently_playing" $(( SCREEN_WIDTH / 8 )) $(( SCREEN_WIDTH / 8 * 6 )) 0 -1
+
         print_highlight "Page $(( ( queue_offset / queue_page_size ) + 1 )) / $(( queue_total_size / queue_page_size ))" 1 "$CHARCOAL" $SCREEN_WIDTH "center"
 
         print_songs "$queue" $(( SCREEN_WIDTH / 8 )) $(( SCREEN_WIDTH / 8 * 6 )) -1 $queue_offset
@@ -285,7 +294,7 @@ while [[ $is_running -ne 0 ]]; do
             if [[ "$view_mode" == "now-playing" ]]; then
                 status=$("$PROJECT_ROOT/bin/spoticli" streamstate $USER_ID -N)
             elif [[ "$view_mode" == "queue" ]]; then
-                if (( queue_offset + queue_page_size < $queue_total_size )); then
+                if (( queue_offset + queue_page_size < queue_total_size )); then
                     ((queue_offset+=$queue_page_size))
                     force_queue_redraw=1
                 fi
@@ -356,8 +365,6 @@ while [[ $is_running -ne 0 ]]; do
                 fi
                 set_bottom_bar "d$number"
 
-                sleep 1
-
                 # Define files
                 queue_cache="$user_temp_dir/queue_cache"
                 unqueue_cache="$user_temp_dir/unqueue_cache"
@@ -384,7 +391,6 @@ while [[ $is_running -ne 0 ]]; do
 
                 # Insert the removed value into the unqueue cache
                 echo -e "$id\n" >> $unqueue_cache
-                # TODO When we add to the queue, we must check for the unqueued song, and remove it from the unqueued cache 
 
                 rm $logical_queue
 

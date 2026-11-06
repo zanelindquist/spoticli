@@ -45,7 +45,6 @@ fi
 if [[ $user_id != "" ]]; then
     # Check for reauth
     reauth_status=$("$PROJECT_ROOT/bin/spoticli" reauth $user_id)
-    echo "Reauth Status: $reauth_status"
 
     if [[ $reauth_status -eq 1 ]]; then
         echo "Error: Fatal error caused program to quit"
