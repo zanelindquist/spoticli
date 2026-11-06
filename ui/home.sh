@@ -18,6 +18,7 @@ is_running=1
 prev_album_image=""
 prev_progress_ms=-1
 prev_name=""
+prev_queue=""
 
 view_mode="now-playing"
 force_now_playing_redraw=0
@@ -64,45 +65,67 @@ print_progress_bar() {
 
 
 while [[ $is_running -ne 0 ]]; do
+
+    # ===== Fetch data =====
+
+    response=$(mktemp) || return 1
+
+    "$PROJECT_ROOT/bin/spoticli" streamstate "$USER_ID" -c > "$response"
+
+    # Check if file still exists
+    if [[ ! -f "$response" ]]; then
+        echo "Client closed. Temp file could not be located"
+        exit 1
+    fi
+
+    # Check if file is empty
+    if [[ ! -s "$response" ]]; then
+        echo "Error: No response body for file"
+        rm -f "$response"
+        exit 1
+    fi
+
+    name=$(jq -r '.item.name' < "$response")
+    artists=$(jq -r '[.item.artists[].name] | join(", ")' < $response)
+    image_url=$(jq -r '.item.album.images[-1].url' < $response)
+    uri=$(jq -r '.item.uri' < "$response")
+    is_playing=$(jq -r '.is_playing' < $response)
+    if [[ $is_playing == "true" ]]; then is_playing=1; else is_playing=0; fi
+
+    progress_ms=$(jq -r '.progress_ms' < $response)
+    duration_ms=$(jq -r '.item.duration_ms' < $response)
+    progress_width_ratio=1.5
+    left_progress_indent=$( echo "($SCREEN_WIDTH - $SCREEN_WIDTH / $progress_width_ratio) / 2" | bc )
+    progress_bars=$( echo "($SCREEN_WIDTH / $progress_width_ratio) * $progress_ms / $duration_ms" | bc )
+    progress_bars_remaining=$( echo "($SCREEN_WIDTH / $progress_width_ratio) - $progress_bars - 1" | bc )
+
+    if [[ -v $name || "$name" == "" ]]; then
+        echo "No currently playing song"
+        cat $response
+        rm $response
+        read -rs
+        exit 1
+    fi
+
+    # Unqueue logic for skipping songs
+
+    if [[ "${prev_name}" != "${name}" ]]; then
+        # Check unqueue list to see if we need to skip
+        unqueue_cache="$user_temp_dir/unqueue_cache"
+        if grep -q "$uri" "$unqueue_cache"; then
+            # Skip the song
+            "$PROJECT_ROOT/bin/spoticli" streamstate $USER_ID -N
+
+            # Remove the song from the unqueue
+            sed -i "/$uri/d" "$unqueue_cache"
+        fi
+
+        # Force a queue redraw to update the queue, now that a new song is playing
+        force_queue_redraw=1
+    fi
+
     if [[ $view_mode == "now-playing" || $force_now_playing_redraw -eq 1 ]]; then
-        response=$(mktemp) || return 1
-
-        "$PROJECT_ROOT/bin/spoticli" streamstate "$USER_ID" -c > "$response"
-
-        # Check if file still exists
-        if [[ ! -f "$response" ]]; then
-            echo "Client closed. Temp file could not be located"
-            exit 1
-        fi
-
-        # Check if file is empty
-        if [[ ! -s "$response" ]]; then
-            echo "Error: No response body for file"
-            rm -f "$response"
-            exit 1
-        fi
-
-        name=$(jq -r '.item.name' < "$response")
-        artists=$(jq -r '[.item.artists[].name] | join(", ")' < $response)
-        image_url=$(jq -r '.item.album.images[-1].url' < $response)
-        is_playing=$(jq -r '.is_playing' < $response)
-        if [[ $is_playing == "true" ]]; then is_playing=1; else is_playing=0; fi
-
-        progress_ms=$(jq -r '.progress_ms' < $response)
-        duration_ms=$(jq -r '.item.duration_ms' < $response)
-        progress_width_ratio=1.5
-        left_progress_indent=$( echo "($SCREEN_WIDTH - $SCREEN_WIDTH / $progress_width_ratio) / 2" | bc )
-        progress_bars=$( echo "($SCREEN_WIDTH / $progress_width_ratio) * $progress_ms / $duration_ms" | bc )
-        progress_bars_remaining=$( echo "($SCREEN_WIDTH / $progress_width_ratio) - $progress_bars - 1" | bc )
-
-        if [[ -v $name || "$name" == "" ]]; then
-            echo "No currently playing song"
-            cat $response
-            rm $response
-            read -rs
-            exit 1
-        fi
-
+        
         # Print stuff
         # Check if we need to redraw entire screen
         if [[ $prev_album_image != $image_url || $force_now_playing_redraw -eq 1 ]]; then
@@ -199,6 +222,7 @@ while [[ $is_running -ne 0 ]]; do
         cp_uri=$(jq -c '.currently_playing.uri' "$response")
         queue=$(jq -c --argjson unqueue_uris "$unqueue_uris" ".queue | map(select(.uri as \$u | \$unqueue_uris | index(\$u) | not)) | .[${queue_offset}:$(( queue_offset + queue_page_size ))]" "$response")
 
+
         # Cache the queue to a file for later
         # Put the currently playing track in as the 0 index just because
         echo "0::$cp_uri" > "$user_temp_dir/queue_cache"
@@ -223,7 +247,12 @@ while [[ $is_running -ne 0 ]]; do
     fi
 
     # Wait 3 seconds and accept keyboard input in this time
-    read -r -s -n 1 -t 3 key
+    wait_time=2
+    # Wait longer if it's in queue mode because we don't need to update the screen as frequently
+    if [[ "$view_mode" == "queue" ]]; then
+        wait_time=4
+    fi
+    read -r -s -n 1 -t $wait_time key
 
     if [[ $key == $'\e' ]]; then
         # Check for other characters being pressed (i.e. an arrow key)
@@ -312,19 +341,22 @@ while [[ $is_running -ne 0 ]]; do
                 # If the user could still be typing more digits.. wait for that digit
                 number=0
                 if (( digit_1 * 10 < queue_total_size )); then
-                    set_bottom_bar "d${digit_1}"
+                    set_bottom_bar "d${digit_1}        Enter to finish"
                     read -rs -n 1 digit_2
-                    if [[ ! "$digit_2" =~ [0-9] ]]; then
+                    if [[ "$digit_2" == "" ]]; then
+                        number="$digit_1"
+                    elif [[ ! "$digit_2" =~ [0-9] ]]; then
                         # If they aren't typing a number, continue
                         continue
+                    else
+                        number=$(( digit_1 * 10 + digit_2))
                     fi
-                    number=$(( digit_1 * 10 + digit_2))
                 else
                     number="$digit_1"
                 fi
                 set_bottom_bar "d$number"
 
-                sleep 0.1
+                sleep 1
 
                 # Define files
                 queue_cache="$user_temp_dir/queue_cache"
@@ -351,7 +383,7 @@ while [[ $is_running -ne 0 ]]; do
                 logical_num=$(awk -F'::' "/^${number}/ {print \$1}" "$logical_queue")
 
                 # Insert the removed value into the unqueue cache
-                echo $id >> $unqueue_cache
+                echo -e "$id\n" >> $unqueue_cache
                 # TODO When we add to the queue, we must check for the unqueued song, and remove it from the unqueued cache 
 
                 rm $logical_queue
