@@ -38,10 +38,10 @@ queue_total_size=20
 #Arguments: "mode" is_playing? is_shuffle?
 print_commands() {
     if [[ $1 == "now-playing" ]]; then
-        print_highlight "(esc) Navigate topbar (p) Pause/play    (n) Next track    (b) Previous track" 1 "$CHARCOAL" $SCREEN_WIDTH "center"
+        print_highlight "(g) Navigate topbar (p) Pause/play    (n) Next track    (b) Previous track" 1 "$CHARCOAL" $SCREEN_WIDTH "center"
         print_highlight "(s) Toggle shuffle (q) View queue" 1 "$CHARCOAL" $SCREEN_WIDTH "center"
     elif [[ $1 == "queue" ]]; then
-        print_highlight "(esc) Navigate topbar (q) View now playing (n) Next page (b) Previous page" 1 "$CHARCOAL" $SCREEN_WIDTH "center"
+        print_highlight "(g) Navigate topbar (q) View now playing (n) Next page (b) Previous page" 1 "$CHARCOAL" $SCREEN_WIDTH "center"
         print_highlight "(d) <number>? Remove track from queue (a) Insert song into queue" 1 "$CHARCOAL" $SCREEN_WIDTH "center"
     else
         echo -e "Unknown view mode\n\n"
@@ -263,7 +263,7 @@ while [[ $is_running -ne 0 ]]; do
     fi
     read -r -s -n 1 -t $wait_time key
 
-    if [[ $key == $'\e' ]]; then
+    if [[ $key == $'g' ]]; then
         # Check for other characters being pressed (i.e. an arrow key)
         read -s -n 2 -t 0.002 next_chars
 
@@ -401,8 +401,20 @@ while [[ $is_running -ne 0 ]]; do
                 # Redraw the queue
                 force_queue_redraw=1
             fi
+            ;;
+        'a')
+            # Add a song to the queue
 
+            # Open the text bar
+            set_bottom_bar "a <search>"
 
+            ;;
+        $'\e')
+            set_bottom_bar ""
+            ;;
+        *)
+            # If they type an unaccepted key, clear the line
+            ;;
     esac
 done
 
