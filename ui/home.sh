@@ -66,6 +66,8 @@ print_progress_bar() {
 
 while [[ $is_running -ne 0 ]]; do
 
+    stty -echo
+
     # ===== Fetch data =====
 
     response=$(mktemp) || return 1
@@ -261,6 +263,7 @@ while [[ $is_running -ne 0 ]]; do
     if [[ "$view_mode" == "queue" ]]; then
         wait_time=4
     fi
+    stty echo
     read -r -s -n 1 -t $wait_time key
 
     if [[ $key == $'g' ]]; then

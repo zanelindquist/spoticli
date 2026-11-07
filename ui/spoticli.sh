@@ -85,6 +85,8 @@ handle_global_nav() {
 home() {
     is_focused=0
     "$PROJECT_ROOT/ui/home.sh" $USER_ID
+    # Allow terminal input in case the user exited at a weird time
+    stty echo
     # When the program returns back, set the focus to the top bar
     is_focused=1
 }
