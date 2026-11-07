@@ -267,13 +267,8 @@ while [[ $is_running -ne 0 ]]; do
     read -r -s -n 1 -t $wait_time key
 
     if [[ $key == $'g' ]]; then
-        # Check for other characters being pressed (i.e. an arrow key)
-        read -s -n 2 -t 0.002 next_chars
-
-        if [[ -z $next_chars ]]; then
-            # Handle escape pressed
-            exit 0
-        fi
+        # Handle escape pressed
+        exit 0
     fi
 
     case $key in

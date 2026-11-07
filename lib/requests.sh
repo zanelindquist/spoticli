@@ -70,3 +70,16 @@ get_queue() {
 
     echo "$response"
 }
+
+
+# ===== Searching =====
+
+# Arguments: "token" "term" "type"
+search_term() {
+    token=$1
+    auth_header="Authorization: Bearer ${token}"
+    #TODO imeplement types
+    response=$(curl -s "${url}/search?q=${2}&type=${3}" -H "$auth_header")
+
+    echo "$response"
+}

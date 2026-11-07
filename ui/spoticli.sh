@@ -6,7 +6,7 @@ PROJECT_ROOT="$(dirname "$(dirname "$(realpath "$0")")")"
 source "$PROJECT_ROOT/ui/topbar.sh"
 
 hovered_option=2
-selected_option=2
+selected_option=0
 total_options=5
 is_focused=0
 
@@ -19,67 +19,77 @@ handle_global_nav() {
     while [[ $post_exit_key == 'g' ]]; do
         read -rsn 1 post_exit_key
     done
-    
-    case $post_exit_key in
-        # Select navigation
-        't')
-            sel_opt=$(( (sel_opt + 1) % total_options ))
-            hov_opt=$sel_opt
-            ;;
-        'T')
-            sel_opt=$(( (sel_opt - 1 + total_options) % total_options ))
-            hov_opt=$sel_opt
-            ;;
-        # Hover navigation (same as arrow keys)
-       'h')
-            # Lock keys if this is not focused
-            hov_opt=$(( (hov_opt - 1 + total_options) % total_options ))
-            sel_opt=-1
-            ;;
-        'l')
-            # Lock keys if this is not focused
-            hov_opt=$(( (hov_opt + 1) % total_options ))
-            sel_opt=-1
-            ;; 
-        # Keys starting with escape
-        $'\x1b')
-                # Arrow keys start with ESC
-                read -rsn2 -t 0.05 key
 
+    if [[ "$post_exit_key" =~ [1-$total_options] ]]; then
+        sel_opt=$(( post_exit_key - 1 )) 
+        echo "$sel_opt"
+        sleep 1
+        hov_opt=$sel_opt
+    else
+        case $post_exit_key in
+            # Select navigation
+            't')
+                sel_opt=$(( (sel_opt + 1) % total_options ))
+                hov_opt=$sel_opt
+                ;;
+            'T')
+                sel_opt=$(( (sel_opt - 1 + total_options) % total_options ))
+                hov_opt=$sel_opt
+                ;;
+            # Hover navigation (same as arrow keys)
+           'h')
+                # Lock keys if this is not focused
+                hov_opt=$(( (hov_opt - 1 + total_options) % total_options ))
                 sel_opt=-1
+                ;;
+            'l')
+                # Lock keys if this is not focused
+                hov_opt=$(( (hov_opt + 1) % total_options ))
+                sel_opt=-1
+                ;; 
+            # Keys starting with escape
+            $'\x1b')
+                    # Arrow keys start with ESC
+                    read -rsn2 -t 0.05 key
 
-                case "$key" in
-                    '[D')
-                        # Lock keys if this is not focused
-                        if (( is_focused != 0 )); then
-                            hov_opt=$(( (hov_opt - 1 + total_options) % total_options ))
-                        fi
-                        ;;
-                    '[C')
-                        # Lock keys if this is not focused
-                        if (( is_focused != 0 )); then
-                            hov_opt=$(( (hov_opt + 1) % total_options ))
-                        fi
-                        ;;
-                    "")
-                        # Escape pressed
-                        sel_opt=-1
-                        is_focused=1
-                        ;;
-                esac
-                ;;
-            "")
-                # Enter key pressed
-                sel_opt=$hov_opt
-                ;;
-            q)
-                clear
-                exit 0
-                ;;
-        *)
-            hov_opt="$sel_opt"
-            sel_opt=-1
-    esac
+                    sel_opt=-1
+
+                    case "$key" in
+                        '[D')
+                            # Lock keys if this is not focused
+                            if (( is_focused != 0 )); then
+                                hov_opt=$(( (hov_opt - 1 + total_options) % total_options ))
+                            fi
+                            ;;
+                        '[C')
+                            # Lock keys if this is not focused
+                            if (( is_focused != 0 )); then
+                                hov_opt=$(( (hov_opt + 1) % total_options ))
+                            fi
+                            ;;
+                        "")
+                            # Escape pressed
+                            sel_opt=-1
+                            is_focused=1
+                            ;;
+                    esac
+                    ;;
+                "")
+                    # Enter key pressed
+                    sel_opt=$hov_opt
+                    ;;
+                q)
+                    clear
+                    echo "Bye!!"
+                    sleep 0.1
+                    clear
+                    exit 0
+                    ;;
+            *)
+                hov_opt="$sel_opt"
+                sel_opt=-1
+        esac
+    fi
 }
 
 home() {
@@ -91,8 +101,6 @@ home() {
     is_focused=1
 }
 
-home
-handle_global_nav loselected_option hovered_option
 
 # Loop over keys
 while true; do
@@ -105,10 +113,10 @@ while true; do
     if [[ "$selected_option" -gt -1 ]]; then
         case $selected_option in
             0)
-                echo "search"
+                "$PROJECT_ROOT/ui/search.sh" $USER_ID
                 ;;
             1)
-                echo "search"
+                echo "library"
                 ;;
             2)
                 home

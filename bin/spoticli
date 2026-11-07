@@ -17,7 +17,11 @@ case "$1" in
         # Arguemnts: <user_id>
         "$PROJECT_ROOT/commands/stream_state.sh" $2 "${@:3}"
         ;;
-	*)
+    search)
+        # Arguemnts: <user_id>
+        "$PROJECT_ROOT/commands/search.sh" $2 "${@:3}"
+        ;;
+    *)
 		echo "Usage: spoticli <command>"
 		echo
 		echo "Commands:"
