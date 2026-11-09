@@ -5,6 +5,7 @@ PROJECT_ROOT="$(dirname "$(dirname "$(realpath "$0")")")"
 source "$PROJECT_ROOT/lib/print_colors.sh"
 source "$PROJECT_ROOT/lib/images.sh"
 source "$PROJECT_ROOT/lib/components.sh"
+source "$PROJECT_ROOT/lib/input.sh"
 source "$PROJECT_ROOT/ui/topbar.sh"
 
 # Load up the user's temporary directory
@@ -340,34 +341,14 @@ while [[ $is_running -ne 0 ]]; do
         'd')
             set_bottom_bar "d"
             if [[ "$view_mode" == "queue" ]]; then
-                read -rs -n 1 digit_1
-                set_bottom_bar "d${digit_1}"
-                sleep 0.1
 
-                # Make sure they are typing a number
-                if [[ ! "$digit_1" =~ [0-9] || "$digit_1" -eq 0 ]]; then
-                    # If they aren't typing a number, continue
+                get_number_dialogue "d" queue_total_size number
+
+                if [[ "$number" -lt 1 ]]; then
                     continue
                 fi
-                # If the user could still be typing more digits.. wait for that digit
-                number=0
-                if (( digit_1 * 10 < queue_total_size )); then
-                    set_bottom_bar "d${digit_1}        Enter to finish"
-                    read -rs -n 1 digit_2
-                    if [[ "$digit_2" == "" ]]; then
-                        number="$digit_1"
-                    elif [[ ! "$digit_2" =~ [0-9] ]]; then
-                        # If they aren't typing a number, continue
-                        continue
-                    else
-                        number=$(( digit_1 * 10 + digit_2))
-                    fi
-                else
-                    number="$digit_1"
-                fi
-                set_bottom_bar "d$number"
 
-                # Define files
+               # Define files
                 queue_cache="$user_temp_dir/queue_cache"
                 unqueue_cache="$user_temp_dir/unqueue_cache"
                 logical_queue=$(mktemp)

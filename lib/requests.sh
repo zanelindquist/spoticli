@@ -70,7 +70,14 @@ get_queue() {
 
     echo "$response"
 }
+# Arguments: "token" "track_uri"
+queue_song() {
+    token=$1
+    auth_header="Authorization: Bearer ${token}"
+    response=$(curl -s "${url}/me/player/queue" -H "$auth_header")
 
+    echo "$response"   
+}
 
 # ===== Searching =====
 
