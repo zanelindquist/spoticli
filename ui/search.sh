@@ -16,6 +16,7 @@ fi
 # Rendering
 view_mode="search"
 is_running=1
+force_search_redraw=1
 
 
 #Arguments: "mode"
@@ -29,9 +30,11 @@ print_commands() {
 }
 
 while [[ "$is_running" -ne 0 ]]; do
-    clear
-    draw_topbar 0
-    print_commands $view_mode
+    if [[ "$force_search_redraw" -eq 1 ]]; then
+        clear
+        draw_topbar 0
+        print_commands $view_mode
+    fi
 
     # Render results
 
@@ -40,27 +43,52 @@ while [[ "$is_running" -ne 0 ]]; do
         # Handle escape pressed
         exit 0
     fi
+
     case $key in
         's')
             query=""
             still_typing=1
+            user_canceled=0
             set_bottom_bar "query: "
-            while [[ "$still_typing" -eq 1 ]]; do
+            while [[ "$still_typing" -eq 1 && "$user_canceled" -ne 1 ]]; do
                 IFS= read -rsn1 next_letter
                 # If they hit enter
                 if [[ -z "$next_letter" ]]; then
                     still_typing=0
                     continue
                 fi
-                query+=$next_letter
+                if [[ "$next_letter" == $'\e' ]]; then
+                    set_bottom_bar ""
+                    user_canceled=1
+                    break
+                fi
+                if [[ "$next_letter" == $'\x7f' || "$next_letter" == $'\x08' ]]; then
+                    query="${query%?}"
+                else
+                    query+=$next_letter
+                fi
                 set_bottom_bar "query: $query"
             done
-            response=$(mktemp)
-            "$PROJECT_ROOT/bin/spoticli" search "$USER_ID" -q "$query" > "$response"
-            tracks=$(jq -c ".tracks.items" < "$response")
-            print_songs "$tracks" $(( SCREEN_WIDTH / 8 )) $(( SCREEN_WIDTH / 8 * 6 )) -1 0
 
-            read -r
+            if [[ "$user_canceled" -ne 1 ]]; then
+
+                # Load response
+                response=$(mktemp)
+                "$PROJECT_ROOT/bin/spoticli" search "$USER_ID" -q "$query" > "$response"
+                tracks=$(jq -c ".tracks.items" < "$response")
+
+                # Print songs
+                print_songs "$tracks" $(( SCREEN_WIDTH / 8 )) $(( SCREEN_WIDTH / 8 * 6 )) -1 0
+                # Save the songs to the search cache in case they want to select one
+                index=1
+                while IFS= read -r song; do
+                    uri=$(jq -c '.uri' < "$song")
+                    echo "${index}::${uri}" > "$user_temp_dir/search_cache"
+                    ((++index))
+                done < <( echo "$tracks" | jq -c '.[]' )
+
+                force_search_redraw=0
+            fi
             ;;
         'j')
 
