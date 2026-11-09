@@ -74,9 +74,10 @@ get_queue() {
 queue_song() {
     token=$1
     auth_header="Authorization: Bearer ${token}"
-    response=$(curl -s "${url}/me/player/queue" -H "$auth_header")
+    parsed_uri=$(echo "$2" | sed 's/:/%3A/g')
+    response=$(curl -s -X POST "${url}/me/player/queue?uri=${parsed_uri}" -H "$auth_header")
 
-    echo "$response"   
+    echo "$response"
 }
 
 # ===== Searching =====

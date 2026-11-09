@@ -8,6 +8,7 @@
 #   -B: back (previous track)
 #   -N: next track
 #   -S "0|1": set shuffle
+#   -Q "uri": queue song
 
 USER_ID=$1
 # Pop the user ID off so the flags work correctly
@@ -21,7 +22,7 @@ token=$(get_token $USER_ID)
 
 is_silent=0
 
-while getopts ":scqPRBNS:" opt; do
+while getopts ":scqPRBNS:Q:" opt; do
     case "$opt" in
         's')
             is_silent=1
@@ -83,5 +84,10 @@ while getopts ":scqPRBNS:" opt; do
                 exit $?
             fi
             ;;
+        'Q')
+            uri=$OPTARG
+            queue_song "$token" "$uri"
+            ;;
+
      esac
 done

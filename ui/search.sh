@@ -84,6 +84,9 @@ while [[ "$is_running" -ne 0 ]]; do
                 tracks=$(jq -c ".tracks.items" < "$response")
 
                 # Print songs
+                clear
+                draw_topbar 0
+                print_commands "$view_mode"
                 print_songs "$tracks" $(( SCREEN_WIDTH / 8 )) $(( SCREEN_WIDTH / 8 * 6 )) -1 0
                 # Save the songs to the search cache in case they want to select one
                 index=1
@@ -118,7 +121,12 @@ while [[ "$is_running" -ne 0 ]]; do
                     continue
                 fi
 
-                echo "number"
+                # Get track URI from cache
+                uri=$(awk -F'::' "/^${number}/ { print \$2 }" "$user_temp_dir/search_cache")
+
+                response=$("$PROJECT_ROOT/bin/spoticli" streamstate "$USER_ID" -Q "$uri")
+
+                set_bottom_bar "Queued number ${number}"
             fi
             ;;
     esac
