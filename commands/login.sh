@@ -1,5 +1,3 @@
-#!/usr/bin/env bash
-
 # Arguements: <user_fingerprint> user_id<ptr>
 
 set -euo pipefail

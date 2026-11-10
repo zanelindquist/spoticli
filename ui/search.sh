@@ -40,6 +40,13 @@ while [[ "$is_running" -ne 0 ]]; do
         clear
         draw_topbar 0
         print_commands $view_mode
+
+        if [[ ! -s "$user_temp_dir/search_cache" ]]; then
+            num_rows=$(tput lines)
+            for (( i=0; i < num_rows / 5 * 2; i++)); do echo -en "\n"; done;
+            print_highlight "No search results." 1 "$VIOLET" "$SCREEN_WIDTH" "center"
+            print_highlight "Press 's' to enter search mode." 1 "$VIOLET" "$SCREEN_WIDTH" "center"
+        fi
     fi
 
     # Render results
@@ -55,7 +62,7 @@ while [[ "$is_running" -ne 0 ]]; do
             query=""
             still_typing=1
             user_canceled=0
-            set_bottom_bar "query: "
+            set_bottom_bar "search: "
             while [[ "$still_typing" -eq 1 && "$user_canceled" -ne 1 ]]; do
                 IFS= read -rsn1 next_letter
                 # If they hit enter
@@ -73,7 +80,7 @@ while [[ "$is_running" -ne 0 ]]; do
                 else
                     query+=$next_letter
                 fi
-                set_bottom_bar "query: $query"
+                set_bottom_bar "search: $query"
             done
 
             if [[ "$user_canceled" -ne 1 ]]; then
@@ -122,12 +129,13 @@ while [[ "$is_running" -ne 0 ]]; do
                 uri=$(awk -F'::' "/^${number}/ { print \$2 }" "$user_temp_dir/search_cache")
 
                 response=$("$PROJECT_ROOT/bin/spoticli" streamstate "$USER_ID" -T "$uri")
-
                 echo "$response"
 
-                set_bottom_bar "Now playing number ${number}"
-                read -r
-                set_bottom_bar ""
+                # if [[ "$response" -lt 300 ]]; then
+                #     set_bottom_bar "Now playing number ${number}. Press any key to continue."
+                #     read -rsn1
+                #     set_bottom_bar ""
+                # fi
             fi
             ;;
         'a')
@@ -138,6 +146,7 @@ while [[ "$is_running" -ne 0 ]]; do
                 set_bottom_bar "a"
                 get_number_dialogue "a" search_length number
 
+                # Validate input
                 if [[ "$number" -lt 1 ]]; then
                     continue
                 fi

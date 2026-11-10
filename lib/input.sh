@@ -13,8 +13,9 @@ get_number_dialogue() {
     # Make sure they are typing a num_ptr
     if [[ ! "$digit_1" =~ [0-9] || "$digit_1" -eq 0 ]]; then
         # If they aren't typing a num_ptr, continue
-        set_bottom_bar "${prefix}: Input must be a number"
-        read -r
+        set_bottom_bar "${prefix}: Input must be a number. Press any key to continue."
+        read -rsn1
+        set_bottom_bar ""
         return -1
     fi
     # If the user could still be typing more digits.. wait for that digit

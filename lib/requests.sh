@@ -82,9 +82,18 @@ queue_song() {
 # Arguments: "token" "track_uri"
 set_playback_track() {
     token=$1
-    auth_header="authorization: bearer ${token}"
+    auth_header="Authorization: Bearer ${token}"
+    track_id=$(echo "$2" | awk -F: '{print $3}')
+    
+    # Spotify API bug prevents you from playing a song directly, so you need to workaround with the album
+    album_uri=$(curl -s -X GET "${url}/tracks/${track_id}" -H "$auth_header" -H "Content-Type: application/json" | jq -r '.album.uri')
+    echo "$album_uri"
+    device_id=$(curl -s "${url}/me/player/devices" -H "$auth_header" | jq -r '.devices[] | select(.is_active) | .id')
+    data=$( jq -n --arg a_uri "$album_uri" --arg t_uri "$2" '{context_uri: $a_uri, offset: {uri: $t_uri}}' )
 
-    status=$(curl -s -o /dev/null -w "%{http_code}" -X PUT "${url}/me/player/play" -h "$auth_header" -d "{\"uris\": [\"${2}\"]}")
+    echo "$data"
+
+    status=$(curl -s -o /dev/null -w "%{http_code}" -X PUT "${url}/me/player/play?device_id=${device_id}" -H "$auth_header" -H "Content-Type: application/json" -d "$data")
 
     echo "$status"
 }
