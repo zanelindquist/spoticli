@@ -104,9 +104,7 @@ while [[ $is_running -ne 0 ]]; do
 
     if [[ -v $name || "$name" == "" ]]; then
         echo "No currently playing song"
-        cat $response
-        rm $response
-        read -rs
+        rm "$response"
         exit 1
     fi
 
@@ -282,11 +280,13 @@ while [[ $is_running -ne 0 ]]; do
                 is_playing=1
             fi
 
-            if [[ $status -eq 200 ]]; then
+            if [[ "$status" -eq 200 ]]; then
                 printf "\e[4;0H\e[K\e[K"
                 print_commands $view_mode $is_playing $is_shuffle
                 # Restore cursor position
                 printf "\e[u"
+            else 
+                printf "Error while playing music"
             fi
             ;;
         'n')

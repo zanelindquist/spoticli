@@ -76,9 +76,6 @@ class AuthHandler(BaseHTTPRequestHandler):
 			)
 			return
 
-		print(f"Authorization code received: {code}")
-		print(f"State received: {session_id}")
-
 		# Get .env information
 		script_dir = Path(__file__).resolve().parent
 		env_path = (script_dir / "../config/local.env").resolve()
@@ -87,11 +84,6 @@ class AuthHandler(BaseHTTPRequestHandler):
 		client_id = os.getenv("SPOTIFY_CLIENT_ID")
 		client_secret = os.getenv("SPOTIFY_CLIENT_SECRET")
 		redirect_uri = os.getenv("SPOTIFY_REDIRECT_URI")
-
-		print(f"Loaded env file: {env_path.exists()}")
-		print(f"Client ID present: {client_id}")
-		print(f"Client secret present: {client_secret}")
-		print(f"Redirect URI: {redirect_uri}")
 
 		# Now exchange the code for a token
 
@@ -116,7 +108,6 @@ class AuthHandler(BaseHTTPRequestHandler):
 			token_info = response.json()
 			access_token = token_info["access_token"]
 			refresh_token = token_info["refresh_token"]
-			print(f"Success\nJSON Info: {token_info}")
 
 			user_id = uuid.uuid4().hex
 
@@ -129,19 +120,16 @@ class AuthHandler(BaseHTTPRequestHandler):
 			with open(user_data_path / "token", "w") as file:
 				file.write(access_token)
 				file.close()
-				print("Token written to file")
 
 			# Record refresh token
 			with open(user_data_path / "refresh_token", "w") as file:
 				file.write(refresh_token)
 				file.close()
-				print("Refresh token written to file")
 
 			# Record token expiration
 			with open(user_data_path / "token_expires_at", "w") as file:
 				expires_at = int(time.time()) + token_info["expires_in"]
 				file.write(str(expires_at))
-				print("Writing expiration to file")
 			
 			# Save the user_id to the session file
 			with open(user_session_path / "user_id", "w") as file:
@@ -152,6 +140,8 @@ class AuthHandler(BaseHTTPRequestHandler):
 			with open(user_session_path / "status", "w") as file:
 				file.write("authenticated")
 				file.close()
+
+			print("New user authenticated")
 
 		else:
 			print(f"Error: {response.status_code}")

@@ -15,9 +15,9 @@ currently_playing() {
 # Arguments: "token"
 play_music(){
     token=$1
-    auth_header="Authorization: bearer ${token}"
+    auth_header="Authorization: Bearer ${token}"
 
-    status=$(curl -s -o /dev/null -w "%{http_code}" -x put "${url}/me/player/play" -h "$auth_header")
+    status=$(curl -s -o /dev/null -w "%{http_code}" -X PUT "${url}/me/player/play" -H "$auth_header")
 
     echo "$status"
 }

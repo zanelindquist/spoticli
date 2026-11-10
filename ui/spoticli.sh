@@ -5,8 +5,8 @@ USER_ID=$1
 PROJECT_ROOT="$(dirname "$(dirname "$(realpath "$0")")")"
 source "$PROJECT_ROOT/ui/topbar.sh"
 
-hovered_option=2
-selected_option=0
+selected_option=1
+hovered_option="$selected_option"
 total_options=5
 is_focused=0
 
@@ -22,7 +22,6 @@ handle_global_nav() {
 
     if [[ "$post_exit_key" =~ [1-$total_options] ]]; then
         sel_opt=$(( post_exit_key - 1 )) 
-        echo "$sel_opt"
         sleep 1
         hov_opt=$sel_opt
     else
@@ -125,7 +124,10 @@ while true; do
                 echo "history"
                 ;;
             4)
-                echo "user"
+                "$PROJECT_ROOT/ui/user.sh" $USER_ID
+                if [[ $? -eq 1 ]]; then
+                    exit 0
+                fi
                 ;;
             *)
                 echo "Error: unexpected selected option"

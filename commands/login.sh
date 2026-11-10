@@ -22,7 +22,7 @@ encoded_redirect_uri=$(python3 -c 'import urllib.parse, os; print(urllib.parse.q
 printf '\nSpotiCLI Spotify Login\n\n' >&2
 printf 'Open this URL in your browser:\n\n' >&2
 
-auth_url="https://accounts.spotify.com/authorize?client_id=${SPOTIFY_CLIENT_ID}&response_type=code&redirect_uri=${encoded_redirect_uri}&state=${session_id}&scope=user-read-private%20user-read-email%20user-read-currently-playing%20user-modify-playback-state%20user-read-playback-state"
+auth_url="https://accounts.spotify.com/authorize?client_id=${SPOTIFY_CLIENT_ID}&response_type=code&redirect_uri=${encoded_redirect_uri}&state=${session_id}&scope=user-read-private%20user-read-email%20user-read-currently-playing%20user-modify-playback-state%20user-read-playback-state%20user-library-read%20user-follow-read%20playlist-read-private"
 
 printf '%s\n\n' $auth_url >&2
 
