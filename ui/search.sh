@@ -129,13 +129,14 @@ while [[ "$is_running" -ne 0 ]]; do
                 uri=$(awk -F'::' "/^${number}/ { print \$2 }" "$user_temp_dir/search_cache")
 
                 response=$("$PROJECT_ROOT/bin/spoticli" streamstate "$USER_ID" -T "$uri")
-                echo "$response"
 
-                # if [[ "$response" -lt 300 ]]; then
-                #     set_bottom_bar "Now playing number ${number}. Press any key to continue."
-                #     read -rsn1
-                #     set_bottom_bar ""
-                # fi
+                if [[ "$response" -eq 204 ]]; then
+                    set_bottom_bar "Now playing number ${number}. Press any key to continue."
+                    read -rsn1
+                    set_bottom_bar ""
+                else 
+                    set_bottom_bar "Error playing song"
+                fi
             fi
             ;;
         'a')
@@ -156,8 +157,8 @@ while [[ "$is_running" -ne 0 ]]; do
 
                 response=$("$PROJECT_ROOT/bin/spoticli" streamstate "$USER_ID" -Q "$uri")
 
-                set_bottom_bar "Queued number ${number}"
-                read -r
+                set_bottom_bar "Added number ${number} to queue. Press any key to continue."
+                read -rsn1
                 set_bottom_bar ""
             fi
             ;;
