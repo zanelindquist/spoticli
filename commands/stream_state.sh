@@ -3,6 +3,7 @@
 # Arguments "user_id" [OPTIONS]
 # OPTIONS:
 #   -c: currently playing
+#   -T "uri": play track
 #   -P: pause music
 #   -R: resume music
 #   -B: back (previous track)
@@ -22,7 +23,7 @@ token=$(get_token $USER_ID)
 
 is_silent=0
 
-while getopts ":scqPRBNS:Q:" opt; do
+while getopts ":scqPRBNS:Q:T:" opt; do
     case "$opt" in
         's')
             is_silent=1
@@ -88,6 +89,9 @@ while getopts ":scqPRBNS:Q:" opt; do
             uri=$OPTARG
             queue_song "$token" "$uri"
             ;;
-
+        'T')
+            uri=$OPTARG
+            set_playback_track "$token" "$uri"
+            ;;
      esac
 done

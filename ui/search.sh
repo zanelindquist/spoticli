@@ -107,7 +107,28 @@ while [[ "$is_running" -ne 0 ]]; do
 
             ;;
         'p')
+            if [[ ! -s "$user_temp_dir/search_cache" ]]; then
+                set_bottom_bar "No search results to query"
+                read -r
+            else
+                set_bottom_bar "p"
+                get_number_dialogue "p" search_length number
 
+                if [[ "$number" -lt 1 ]]; then
+                    continue
+                fi
+
+                # Get track URI from cache
+                uri=$(awk -F'::' "/^${number}/ { print \$2 }" "$user_temp_dir/search_cache")
+
+                response=$("$PROJECT_ROOT/bin/spoticli" streamstate "$USER_ID" -T "$uri")
+
+                echo "$response"
+
+                set_bottom_bar "Now playing number ${number}"
+                read -r
+                set_bottom_bar ""
+            fi
             ;;
         'a')
             if [[ ! -s "$user_temp_dir/search_cache" ]]; then
@@ -127,6 +148,8 @@ while [[ "$is_running" -ne 0 ]]; do
                 response=$("$PROJECT_ROOT/bin/spoticli" streamstate "$USER_ID" -Q "$uri")
 
                 set_bottom_bar "Queued number ${number}"
+                read -r
+                set_bottom_bar ""
             fi
             ;;
     esac

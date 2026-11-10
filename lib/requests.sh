@@ -15,9 +15,9 @@ currently_playing() {
 # Arguments: "token"
 play_music(){
     token=$1
-    auth_header="Authorization: Bearer ${token}"
+    auth_header="Authorization: bearer ${token}"
 
-    status=$(curl -s -o /dev/null -w "%{http_code}" -X PUT "${url}/me/player/play" -H "$auth_header")
+    status=$(curl -s -o /dev/null -w "%{http_code}" -x put "${url}/me/player/play" -h "$auth_header")
 
     echo "$status"
 }
@@ -79,6 +79,15 @@ queue_song() {
 
     echo "$response"
 }
+# Arguments: "token" "track_uri"
+set_playback_track() {
+    token=$1
+    auth_header="authorization: bearer ${token}"
+
+    status=$(curl -s -o /dev/null -w "%{http_code}" -X PUT "${url}/me/player/play" -h "$auth_header" -d "{\"uris\": [\"${2}\"]}")
+
+    echo "$status"
+}
 
 # ===== Searching =====
 
@@ -87,7 +96,7 @@ search_term() {
     token=$1
     auth_header="Authorization: Bearer ${token}"
     #TODO imeplement types
-    response=$(curl -s "${url}/search?q=${2}&type=${3}" -H "$auth_header")
+    response=$(curl -sG "${url}/search" --data-urlencode "q=${2}" --data-urlencode "type=${3}" -H "$auth_header")
 
     echo "$response"
 }
