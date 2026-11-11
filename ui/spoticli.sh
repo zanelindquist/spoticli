@@ -4,6 +4,7 @@ USER_ID=$1
 # Source the file relative to the script's actual location
 PROJECT_ROOT="$(dirname "$(dirname "$(realpath "$0")")")"
 source "$PROJECT_ROOT/ui/topbar.sh"
+source "$PROJECT_ROOT/lib/print_colors.sh"
 
 selected_option=1
 hovered_option="$selected_option"
@@ -13,12 +14,20 @@ is_focused=0
 handle_global_nav() {
     declare -n sel_opt=$1
     declare -n hov_opt=$2
+
+    set_bottom_bar "g"
     read -rs -n 1 post_exit_key
+    set_bottom_bar "g${post_exit_key}"
 
     # If user presses g again, then we want to be forgiving and just do all this again
     while [[ $post_exit_key == 'g' ]]; do
-        read -rsn 1 post_exit_key
+        set_bottom_bar "g"
+        read -rs -n 1 post_exit_key
+        set_bottom_bar "g${post_exit_key}"
     done
+
+    sleep 0.1
+    set_bottom_bar ""
 
     if [[ "$post_exit_key" =~ [1-$total_options] ]]; then
         sel_opt=$(( post_exit_key - 1 )) 
