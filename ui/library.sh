@@ -37,12 +37,13 @@ while [[ "$is_running" -ne 0 ]]; do
 
         # Fetch library
         response=$(mktemp)
-        "$PROJECT_ROOT/bin/spoticli" library $USER_ID -a > "$response"
+        "$PROJECT_ROOT/bin/spoticli" library $USER_ID -a -l 50 > "$response"
 
         items=$(jq -r '.items' < "$response")
 
-        echo "$items"
-
+# Arguments: "jq songs data" <indent_left> <max_width> <highlighted_num> <start_index>?
+        print_playlist "$items" $(( SCREEN_WIDTH / 8 )) $(( SCREEN_WIDTH / 8 * 6 )) -1 0
+ 
     fi
 
     # Render results

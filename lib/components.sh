@@ -56,6 +56,24 @@ print_songs() {
     done < <(jq -c '.[]' <<< "$data")
 }
 
+# Arguments: "jq songs data" <indent_left> <max_width> <highlighted_num> <start_index>?
 print_playlist() {
-    echo "playlist"
+    data=$1
+    start_index=$5 || 0
+
+    echo -e "\n"
+    
+    local index=0
+    while IFS= read -r song; do
+        name=$(echo "$song" | jq -r '.name')
+        artists=$(echo "$song" | jq -r '.owner.display_name')
+        image_url=$(echo "$song" | jq -r '.images[-1].url')
+
+        if [[ $index -eq $4 ]]; then
+            print_item "$name" "$artists" "$image_url" "$2" "$3" 1 "$(( start_index + index + 1))"
+        else
+            print_item "$name" "$artists" "$image_url" "$2" "$3" 0 "$(( start_index + index + 1))"
+        fi
+        ((++index))
+    done < <(jq -c '.[]' <<< "$data")
 }

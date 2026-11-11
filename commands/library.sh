@@ -19,6 +19,8 @@ is_silent=0
 offset=0
 limit=10
 
+is_all=0
+
 while getopts ":o:l:a" opt; do
     case "$opt" in
         'o')
@@ -28,7 +30,12 @@ while getopts ":o:l:a" opt; do
             limit="$OPTARG"
             ;;
         'a')
-            get_library_items "$token" "playlists" $offset $limit
+            is_all=1
            ;;
      esac
 done
+
+# Do commands when we have enumerated flags already
+if [[ "$is_all" -eq 1 ]]; then
+    get_library_items "$token" "playlists" $offset $limit
+fi

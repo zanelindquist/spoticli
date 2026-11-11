@@ -116,3 +116,12 @@ get_library_items() {
 
     echo "$response"
 }
+
+# Arguements: "token" <limit>
+get_recent_tracks() {
+    token=$1
+    auth_header="Authorization: Bearer ${token}"
+    response=$(curl -sG "${url}/me/player/recently-played?limit=${2}" -H "$auth_header")
+
+    echo "$response"
+}
