@@ -107,3 +107,12 @@ search_term() {
 
     echo "$response"
 }
+
+# Arguements: "token" "type" <offset> <limit>
+get_library_items() {
+    token=$1
+    auth_header="Authorization: Bearer ${token}"
+    response=$(curl -sG "${url}/me/${2}?offset=${3}&limit=${4}" -H "$auth_header")
+
+    echo "$response"
+}

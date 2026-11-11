@@ -124,7 +124,7 @@ while true; do
                 "$PROJECT_ROOT/ui/search.sh" $USER_ID
                 ;;
             1)
-                echo "library"
+                "$PROJECT_ROOT/ui/library.sh" $USER_ID
                 ;;
             2)
                 home

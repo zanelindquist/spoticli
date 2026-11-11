@@ -13,10 +13,6 @@ print_song() {
     artists=$(echo "$data" | jq -r '[.artists[].name] | join(", ")')
     image_url=$(echo "$data" | jq -r '.album.images[-1].url')
 
-    # if [[ $4 -eq 1 ]]; then
-    #     printf "$WHITE_HIGHLIGHT"
-    # fi
-    
     local index=0
     while IFS= read -r pic_line; do
         printf "%s" "$pic_line" 
@@ -38,12 +34,6 @@ print_song() {
         printf "\n"
         ((++index))
     done
-
-
-    #
-    # if [[ $4 -eq 1 ]]; then
-    #     printf "$RESET"
-    # fi
 }
 
 # Arguments: "jq songs data" <indent_left> <max_width> <highlighted_num> <start_index>?
@@ -62,4 +52,8 @@ print_songs() {
         fi
         ((++index))
     done < <(jq -c '.[]' <<< "$songs_data")
+}
+
+print_playlist() {
+
 }
