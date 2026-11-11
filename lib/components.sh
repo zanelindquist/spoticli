@@ -3,15 +3,13 @@
 PROJECT_ROOT="$(dirname "$(dirname "$(realpath "$0")")")"
 source "$PROJECT_ROOT/lib/print_colors.sh"
 
-# Arguments: "jq song data" <indent_left> <max_width> highlighted? <index>?
-print_song() {
-    data=$1
-    indent_left=$2
-    max_width=$3
-
-    name=$(echo "$data" | jq -r '.name')
-    artists=$(echo "$data" | jq -r '[.artists[].name] | join(", ")')
-    image_url=$(echo "$data" | jq -r '.album.images[-1].url')
+# Arguments: "top" "bottom" "image_url" <indent_left> <max_width> highlighted? <index>?
+print_item() {
+    top=$1
+    bottom=$2
+    image_url=$3
+    indent_left=$4
+    max_width=$5
 
     local index=0
     while IFS= read -r pic_line; do
@@ -19,16 +17,16 @@ print_song() {
 
         if [[ $index -eq 1 ]]; then
             if (( $5 > 0 )); then
-                printf " %2d %s" "$5" "$name"
+                printf " %2d %s" "$7" "$top"
             else
-                printf "    %s" "$name"
+                printf "    %s" "$top"
             fi
         elif [[ $index -eq 2 ]]; then
-            printf "    %s" "$artists"
+            printf "    %s" "${CHARCOAL}$bottom${RESET}"
         fi
         printf "\n"
         ((++index))
-    done < <(indent_image "$image_url" 4 $2 1)
+    done < <(indent_image "$image_url" 4 "$indent_left" 1)
 
     while (( index < 4 )); do
         printf "\n"
@@ -38,22 +36,26 @@ print_song() {
 
 # Arguments: "jq songs data" <indent_left> <max_width> <highlighted_num> <start_index>?
 print_songs() {
-    songs_data=$1
+    data=$1
     start_index=$5 || 0
 
     echo -e "\n"
     
     local index=0
     while IFS= read -r song; do
+        name=$(echo "$song" | jq -r '.name')
+        artists=$(echo "$song" | jq -r '[.artists[].name] | join(", ")')
+        image_url=$(echo "$song" | jq -r '.album.images[-1].url')
+
         if [[ $index -eq $4 ]]; then
-            print_song "$song" "$2" "$3" 1 "$(( start_index + index + 1))"
+            print_item "$name" "$artists" "$image_url" "$2" "$3" 1 "$(( start_index + index + 1))"
         else
-            print_song "$song" "$2" "$3" 0 "$(( start_index + index + 1))"
+            print_item "$name" "$artists" "$image_url" "$2" "$3" 0 "$(( start_index + index + 1))"
         fi
         ((++index))
-    done < <(jq -c '.[]' <<< "$songs_data")
+    done < <(jq -c '.[]' <<< "$data")
 }
 
 print_playlist() {
-
+    echo "playlist"
 }
