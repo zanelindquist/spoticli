@@ -17,7 +17,18 @@ fi
 # Rendering
 view_mode="library"
 is_running=1
-force_search_redraw=1
+force_redraw=1
+
+# Fetch library
+library=$(mktemp)
+"$PROJECT_ROOT/bin/spoticli" library $USER_ID -r -C -l 50 > "$library"
+library_length=$(jq -r 'length' "$library")
+page=0
+page_length=7
+total_pages=$(( library_length / page_length ))
+if (( library_length % page_length != 0 )); then
+    ((++total_pages))
+fi
 
 #Arguments: "mode"
 print_commands() {
@@ -30,23 +41,19 @@ print_commands() {
 }
 
 while [[ "$is_running" -ne 0 ]]; do
-    if [[ "$force_search_redraw" -eq 1 ]]; then
+    if [[ "$force_redraw" -eq 1 ]]; then
         clear
         draw_topbar 1
         print_commands "$view_mode"
 
-        # Fetch library
-        response=$(mktemp)
-        "$PROJECT_ROOT/bin/spoticli" library $USER_ID -r -l 50 > "$response"
+        display=$(jq -c ".[$((page * page_length)):$((page * page_length + page_length - 1))]" "$library")
 
-        cat $response
+        echo
+        print_highlight "Page $(( page + 1 )) / $total_pages" 1 "$CHARCOAL" $SCREEN_WIDTH "center"
+        # Display library based on pagination
+        print_playlist "$display" $(( SCREEN_WIDTH / 8 )) $(( SCREEN_WIDTH / 8 * 6 )) -1 $(( page * page_length )) 
 
-        items=$(jq -r '.items' < "$response")
-
-# Arguments: "jq songs data" <indent_left> <max_width> <highlighted_num> <start_index>?
-        print_playlist "$items" $(( SCREEN_WIDTH / 8 )) $(( SCREEN_WIDTH / 8 * 6 )) -1 0
- 
-        force_search_redraw=0
+        force_redraw=0
     fi
 
     # Render results
@@ -54,25 +61,28 @@ while [[ "$is_running" -ne 0 ]]; do
     read -rsn1 key
     if [[ $key == $'g' ]]; then
         # Handle escape pressed
-        exit 0
+        is_running=0
     fi
 
     case $key in
         's')
 
            ;;
-        'j')
-
+        # Pagination & movement
+        'j'|'l')
+            page=$(( ( page + 1 ) % total_pages ))
+            force_redraw=1
             ;;
-        'k')
-
+        'k'|'h')
+            page=$(( ( page - 1 + total_pages ) % total_pages ))
+            force_redraw=1
             ;;
         'p')
 
            ;;
-        'a')
-
-            ;;
     esac
 
 done
+
+rm "$library"
+exit 0
