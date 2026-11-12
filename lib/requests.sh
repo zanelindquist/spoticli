@@ -112,9 +112,23 @@ search_term() {
 get_library_items() {
     token=$1
     auth_header="Authorization: Bearer ${token}"
-    response=$(curl -sG "${url}/me/${2}?offset=${3}&limit=${4}" -H "$auth_header")
+    next="${url}/me/${2}?offset=${3}&limit=${4}"
+    local results='[]'
 
-    echo "$response"
+    limit=5
+    index=0
+
+    while [[ "$next" != "null" && $index -lt $limit ]]; do
+        response=$(curl -sG "$next" -H "$auth_header")
+        items=$(jq -c '.items' <<< "$response")
+        local combined=$(jq -cn --argjson prev "$results" --argjson new "$items" '$prev + $new')
+        next=$(echo "$response" | jq -r '.next')
+        results="$combined"
+
+        ((++index))
+    done
+
+    echo "$results"
 }
 
 # Arguements: "token" <limit>
