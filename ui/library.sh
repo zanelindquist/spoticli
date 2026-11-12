@@ -19,6 +19,8 @@ view_mode="library"
 is_running=1
 force_redraw=1
 
+print_middle_screen "$GREEN" "Loading library..."
+
 # Fetch library
 library=$(mktemp)
 "$PROJECT_ROOT/bin/spoticli" library $USER_ID -r -C -l 50 > "$library"
@@ -48,7 +50,7 @@ while [[ "$is_running" -ne 0 ]]; do
 
         display=$(jq -c ".[$((page * page_length)):$((page * page_length + page_length - 1))]" "$library")
 
-        echo
+        echo -e "\n"
         print_highlight "Page $(( page + 1 )) / $total_pages" 1 "$CHARCOAL" $SCREEN_WIDTH "center"
         # Display library based on pagination
         print_playlist "$display" $(( SCREEN_WIDTH / 8 )) $(( SCREEN_WIDTH / 8 * 6 )) -1 $(( page * page_length )) 
@@ -66,14 +68,19 @@ while [[ "$is_running" -ne 0 ]]; do
 
     case $key in
         's')
+            # Arguments "bottom_prefix" <max_number> <ptr>
+            get_text_dialogue "search library: " query
 
+            if [[ "$query" != "" ]]; then
+                echo "$query"
+            fi
            ;;
         # Pagination & movement
-        'j'|'l')
+        'n'|'j'|'l')
             page=$(( ( page + 1 ) % total_pages ))
             force_redraw=1
             ;;
-        'k'|'h')
+        'b'|'k'|'h')
             page=$(( ( page - 1 + total_pages ) % total_pages ))
             force_redraw=1
             ;;

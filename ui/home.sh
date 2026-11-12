@@ -289,7 +289,7 @@ while [[ $is_running -ne 0 ]]; do
                 printf "Error while playing music"
             fi
             ;;
-        'n')
+        'n'|'j'|'l')
             if [[ "$view_mode" == "now-playing" ]]; then
                 status=$("$PROJECT_ROOT/bin/spoticli" streamstate $USER_ID -N)
             elif [[ "$view_mode" == "queue" ]]; then
@@ -303,7 +303,7 @@ while [[ $is_running -ne 0 ]]; do
                 echo -e "Unknown view mode\n"
             fi
             ;;
-        'b')
+        'b'|'k'|'h')
             if [[ "$view_mode" == "now-playing" ]]; then
                 status=$("$PROJECT_ROOT/bin/spoticli" streamstate $USER_ID -B)
             elif [[ "$view_mode" == "queue" ]]; then
@@ -339,9 +339,7 @@ while [[ $is_running -ne 0 ]]; do
             fi
             ;;
         'd')
-            set_bottom_bar "d"
             if [[ "$view_mode" == "queue" ]]; then
-
                 get_number_dialogue "d" queue_total_size number
 
                 if [[ "$number" -lt 1 ]]; then

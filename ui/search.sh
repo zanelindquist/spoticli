@@ -42,10 +42,7 @@ while [[ "$is_running" -ne 0 ]]; do
         print_commands $view_mode
 
         if [[ ! -s "$user_temp_dir/search_cache" ]]; then
-            num_rows=$(tput lines)
-            for (( i=0; i < num_rows / 5 * 2; i++)); do echo -en "\n"; done;
-            print_highlight "No search results." 1 "$VIOLET" "$SCREEN_WIDTH" "center"
-            print_highlight "Press 's' to enter search mode." 1 "$VIOLET" "$SCREEN_WIDTH" "center"
+            print_middle_screen "$VIOLET" "No search results." "Press 's' to enter search mode."
         fi
     fi
 
@@ -59,32 +56,9 @@ while [[ "$is_running" -ne 0 ]]; do
 
     case $key in
         's')
-            query=""
-            still_typing=1
-            user_canceled=0
-            set_bottom_bar "search: "
-            while [[ "$still_typing" -eq 1 && "$user_canceled" -ne 1 ]]; do
-                IFS= read -rsn1 next_letter
-                # If they hit enter
-                if [[ -z "$next_letter" ]]; then
-                    still_typing=0
-                    continue
-                fi
-                if [[ "$next_letter" == $'\e' ]]; then
-                    set_bottom_bar ""
-                    user_canceled=1
-                    break
-                fi
-                if [[ "$next_letter" == $'\x7f' || "$next_letter" == $'\x08' ]]; then
-                    query="${query%?}"
-                else
-                    query+=$next_letter
-                fi
-                set_bottom_bar "search: $query"
-            done
+            get_text_dialogue "search: " query
 
-            if [[ "$user_canceled" -ne 1 ]]; then
-
+            if [[ "$query" != "" ]]; then
                 # Load response
                 response=$(mktemp)
                 "$PROJECT_ROOT/bin/spoticli" search "$USER_ID" -q "$query" > "$response"
@@ -118,7 +92,6 @@ while [[ "$is_running" -ne 0 ]]; do
                 set_bottom_bar "No search results to query"
                 read -r
             else
-                set_bottom_bar "p"
                 get_number_dialogue "p" search_length number
 
                 if [[ "$number" -lt 1 ]]; then
@@ -144,7 +117,6 @@ while [[ "$is_running" -ne 0 ]]; do
                 set_bottom_bar "No search results to query"
                 read -r
             else
-                set_bottom_bar "a"
                 get_number_dialogue "a" search_length number
 
                 # Validate input

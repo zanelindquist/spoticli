@@ -72,4 +72,11 @@ set_bottom_bar() {
     tput rc
 }
 
-
+# Arguments "color" ["lines"]
+print_middle_screen() {
+    num_rows=$(tput lines)
+    for (( i=0; i < num_rows / 5 * 2 - ${#@}; i++)); do echo -en "\n"; done;
+    for line in "${@:2}"; do
+        print_highlight "$line" 1 "$1" "$SCREEN_WIDTH" "center"
+    done
+}

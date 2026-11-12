@@ -6,7 +6,8 @@ source "$PROJECT_ROOT/lib/print_colors.sh"
 get_number_dialogue() {
     declare -n num_ptr=$3
     prefix="$1"
-    read -rs -n 1 digit_1
+    set_bottom_bar "$prefix"
+    read -rsn1 digit_1
     set_bottom_bar "${prefix}${digit_1}"
     sleep 0.1
 
@@ -36,4 +37,36 @@ get_number_dialogue() {
     fi
 
     set_bottom_bar "${prefix}${num_ptr}"
+}
+
+# Arguments: "prefix" string<ptr>
+get_text_dialogue() {
+    declare -n text=$2
+    still_typing=1
+    user_canceled=0
+    set_bottom_bar "$1"
+    while [[ "$still_typing" -eq 1 && "$user_canceled" -ne 1 ]]; do
+        IFS= read -rsn1 next_letter
+        # If they hit enter
+        if [[ -z "$next_letter" ]]; then
+            still_typing=0
+            set_bottom_bar ""
+            continue
+        fi
+        # Handle escape key pressed
+        if [[ "$next_letter" == $'\e' ]]; then
+            set_bottom_bar ""
+            # Set text to "" if they cancedled
+            text=""
+            user_canceled=1
+            break
+        fi
+        # Handle delete key
+        if [[ "$next_letter" == $'\x7f' || "$next_letter" == $'\x08' ]]; then
+            text="${query%?}"
+        else
+            text+=$next_letter
+        fi
+        set_bottom_bar "${1}${text}"
+    done
 }
