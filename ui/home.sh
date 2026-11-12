@@ -247,7 +247,7 @@ while [[ $is_running -ne 0 ]]; do
         echo -e "\n"
 
         print_highlight "Now Playing" 1 "$VIOLET" $SCREEN_WIDTH "center"
-        print_songs "$currently_playing" $(( SCREEN_WIDTH / 8 )) $(( SCREEN_WIDTH / 8 * 6 )) 0 -1
+        print_song "$currently_playing" $(( SCREEN_WIDTH / 8 )) $(( SCREEN_WIDTH / 8 * 6 )) 0 -1
 
         print_highlight "Page $(( ( queue_offset / queue_page_size ) + 1 )) / $(( queue_total_size / queue_page_size ))" 1 "$CHARCOAL" $SCREEN_WIDTH "center"
 

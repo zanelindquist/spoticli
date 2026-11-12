@@ -16,7 +16,7 @@ print_item() {
         printf "%s" "$pic_line" 
 
         if [[ $index -eq 1 ]]; then
-            if (( $5 > 0 )); then
+            if (( $7 > 0 )); then
                 printf " %2d %s" "$7" "$top"
             else
                 printf "    %s" "$top"
@@ -34,6 +34,21 @@ print_item() {
     done
 }
 
+# Arguments: "jq song data" <indent_left> <max_width> <highlighted> <number?>
+print_song() {
+    song=$1
+    name=$(echo "$song" | jq -r '.name')
+    artists=$(echo "$song" | jq -r '[.artists[].name] | join(", ")')
+    image_url=$(echo "$song" | jq -r '.album.images[-1].url')
+
+    if [[ $5 -eq 1 ]]; then
+        print_item "$name" "$artists" "$image_url" "$2" "$3" 1 "$5"
+    else
+        print_item "$name" "$artists" "$image_url" "$2" "$3" 0 "$5"
+    fi
+
+}
+
 # Arguments: "jq songs data" <indent_left> <max_width> <highlighted_num> <start_index>?
 print_songs() {
     data=$1
@@ -43,16 +58,10 @@ print_songs() {
     
     local index=0
     while IFS= read -r song; do
-        name=$(echo "$song" | jq -r '.name')
-        artists=$(echo "$song" | jq -r '[.artists[].name] | join(", ")')
-        image_url=$(echo "$song" | jq -r '.album.images[-1].url')
-
-        if [[ $index -eq $4 ]]; then
-            print_item "$name" "$artists" "$image_url" "$2" "$3" 1 "$(( start_index + index + 1))"
-        else
-            print_item "$name" "$artists" "$image_url" "$2" "$3" 0 "$(( start_index + index + 1))"
-        fi
-        ((++index))
+        is_highlighted=0
+        if [[ $4 -eq $index ]]; then is_highlighted=1; fi
+        print_song "$song" $2 $3  $is_highlighted "$(( start_index + index + 1))"
+       ((++index))
     done < <(jq -c '.[]' <<< "$data")
 }
 
