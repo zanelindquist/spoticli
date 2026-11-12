@@ -108,20 +108,20 @@ search_term() {
     echo "$response"
 }
 
-# Arguements: "token" "type" <offset> <limit>
-get_library_items() {
+# Arguements: "token" "type"
+get_all_library_items() {
     token=$1
     auth_header="Authorization: Bearer ${token}"
-    next="${url}/me/${2}?offset=${3}&limit=${4}"
+    next="${url}/me/${2}?offset=0&limit=50"
     local results='[]'
 
-    limit=5
+    # Basically just prevents infinite loop
+    limit=1000
     index=0
-
     while [[ "$next" != "null" && $index -lt $limit ]]; do
         response=$(curl -sG "$next" -H "$auth_header")
         items=$(jq -c '.items' <<< "$response")
-        local combined=$(jq -cn --argjson prev "$results" --argjson new "$items" '$prev + $new')
+        local combined=$(jq -rn --argjson prev "$results" --argjson new "$items" '$prev + $new')
         next=$(echo "$response" | jq -r '.next')
         results="$combined"
 

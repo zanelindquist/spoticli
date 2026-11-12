@@ -55,16 +55,21 @@ if [[ "$is_all" -eq 1 ]]; then
     # get_recent_tracks "$token" 40
     get_library_items "$token" "playlists" $offset $limit
 elif [[ "$is_recents" -eq 1 ]]; then
+    recents=$(mktemp)
+    library=$(mktemp)
     # Get the context URIs 
-    recents=$(get_recent_tracks "$token" 50 | jq -r ".items | unique_by(.context.uri) | map(select(.context != null))")
-    echo "recents $recents"
+    get_recent_tracks "$token" 50 | jq -r ".items | unique_by(.context.uri) | map(select(.context != null))" > "$recents"
     # Get the items from the library
-    library=$(get_library_items "$token" "playlists" $offset $limit | jq -r ".items")
-    echo "library $library"
+    get_all_library_items "$token" "playlists" > "$library"
+    # jq -r '.[0]' "$recents"
+    # cat "$library" | head -n 65
     # Find items that are in both
-    both=$(jq -n --argjson rec "$recents" --argjson lib "$library" '$lib | map(select(.uri | IN($rec[].context.uri)))')
-    echo "$both"
+    both=$(jq -n --slurpfile rec "$recents" --slurpfile lib "$library" '$lib[0] | map(select(.uri | IN($rec[0][].context.uri)))')
+
+    rm "$recents"
+    rm "$library"
     # Save unique items to cache
     #
     # Use Move to Front heuristic for cache
+    echo "$both"
 fi

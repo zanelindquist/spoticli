@@ -30,23 +30,18 @@ print_commands() {
 }
 
 while [[ "$is_running" -ne 0 ]]; do
-    echo "running"
     if [[ "$force_search_redraw" -eq 1 ]]; then
         clear
         draw_topbar 1
         print_commands "$view_mode"
 
-        echo "fetching library... $USER_ID"
-
         # Fetch library
         response=$(mktemp)
-        "$PROJECT_ROOT/bin/spoticli" library "$USER_ID" -a -l 50 #> "$response"
-        echo "Response"
-        cat "$response"
+        "$PROJECT_ROOT/bin/spoticli" library $USER_ID -r -l 50 > "$response"
+
+        cat $response
 
         items=$(jq -r '.items' < "$response")
-
-        echo "$items"
 
 # Arguments: "jq songs data" <indent_left> <max_width> <highlighted_num> <start_index>?
         print_playlist "$items" $(( SCREEN_WIDTH / 8 )) $(( SCREEN_WIDTH / 8 * 6 )) -1 0
