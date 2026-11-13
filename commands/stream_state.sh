@@ -1,8 +1,10 @@
 #!/bin/bash
 
-# Arguments "user_id" [OPTIONS]
+# Arguments COMMAND "user_id" [OPTIONS]
 # OPTIONS:
 #   -c: currently playing
+#   -C: set playback context
+#     -o: integer offset for playback
 #   -T "uri": play track
 #   -P: pause music
 #   -R: resume music
@@ -22,8 +24,9 @@ source "$PROJECT_ROOT/lib/requests.sh"
 token=$(get_token $USER_ID)
 
 is_silent=0
+offset=0
 
-while getopts ":scqPRBNS:Q:T:" opt; do
+while getopts ":o:scqPRBNS:Q:T:C:" opt; do
     case "$opt" in
         's')
             is_silent=1
@@ -92,6 +95,13 @@ while getopts ":scqPRBNS:Q:T:" opt; do
         'T')
             uri=$OPTARG
             set_playback_track "$token" "$uri"
+            ;;
+        'o')
+            offset=$OPTARG
+            ;;
+        'C')
+            context_uri=$OPTARG
+
             ;;
      esac
 done

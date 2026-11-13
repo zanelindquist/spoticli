@@ -24,6 +24,14 @@ print_middle_screen "$GREEN" "Loading library..."
 # Fetch library
 library=$(mktemp)
 "$PROJECT_ROOT/bin/spoticli" library $USER_ID -r -C -l 50 > "$library"
+library_cache="$user_temp_dir/library_cache"
+: > "$library_cache"
+# Save library to cache
+index=1
+cat "$library" | jq -r '.[].uri' | while IFS= read -r uri; do
+    echo "${index}::${uri}" >> "$library_cache"
+    ((++index))
+done
 library_length=$(jq -r 'length' "$library")
 page=0
 page_length=7
@@ -31,6 +39,7 @@ total_pages=$(( library_length / page_length ))
 if (( library_length % page_length != 0 )); then
     ((++total_pages))
 fi
+
 
 #Arguments: "mode"
 print_commands() {
@@ -85,7 +94,15 @@ while [[ "$is_running" -ne 0 ]]; do
             force_redraw=1
             ;;
         'p')
+            get_number_dialogue "p" "$library_length" number
+            playlist_uri=$(awk -F'::' "/^${number}::/ {print \$2}" "$library_cache")
+            status=$("$PROJECT_ROOT/bin/spoticli" streamstate "$USER_ID" -o 1 -C "$playlist_uri")
 
+            if [[ "$status" -eq 204 ]]; then
+                set_bottom_bar "Now playing playlist number ${number} from position 0"
+            else
+                error_message "Action failed with status $status"
+            fi
            ;;
     esac
 

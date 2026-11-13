@@ -7,6 +7,7 @@
 #
 #  -a: all
 #  -r: recent compilation
+#    -R: Fetch recents
 #    -C: Use cache for recency ordering
 
 USER_ID=$1
@@ -22,6 +23,7 @@ user_temp_dir="$PROJECT_ROOT/data/users/$USER_ID/temp"
 if [[ ! -e $user_temp_dir ]]; then
     mkdir $user_temp_dir
 fi
+raw_library="$user_temp_dir/raw_library"
 
 
 token=$(get_token $USER_ID)
@@ -34,8 +36,9 @@ limit=10
 is_all=0
 is_recents=0
 use_cache=0
+get_recents=0
 
-while getopts ":o:l:arC" opt; do
+while getopts ":o:l:arCR" opt; do
     case "$opt" in
         'o')
             offset="$OPTARG"
@@ -51,6 +54,9 @@ while getopts ":o:l:arC" opt; do
             ;;
         'C')
             use_cache=1
+            ;;
+        'R')
+            get_recents=1
            ;;
      esac
 done
@@ -60,7 +66,7 @@ if [[ "$is_all" -eq 1 ]]; then
     # get_recent_tracks "$token" 40
     get_library_items "$token" "playlists" $offset $limit
 elif [[ "$is_recents" -eq 1 ]]; then
-    cache="$user_temp_dir/library_cache"
+    cache="$user_temp_dir/library_recents_cache"
     if [[ ! -f "$cache" ]]; then
         echo "" > "$cache"
     fi
@@ -69,9 +75,28 @@ elif [[ "$is_recents" -eq 1 ]]; then
     if [[ "$use_cache" -eq 1 ]]; then
         recents=$(mktemp)
         # Get the context URIs 
-        get_recent_tracks "$token" 50 | jq -r ".items | unique_by(.context.uri) | map(select(.context != null))" > "$recents"
+        # Support request caching so we don't get rate limited
+        # now=$(date +%s)
+        # modified=$(stat -c %Y "$raw_library")
+        #
+        # if (( now - modified > 7200 )); then
+        #   echo "Modified more than 2 hours ago"
+        # fi
+        if [[ "$get_recents" -eq 1 ]]; then
+            get_recent_tracks "$token" 50 | jq -r ".items | unique_by(.context.uri) | map(select(.context != null))" > "$recents"
+        else
+            echo "[]" > "$recents"
+        fi
         # Get the items from the library
-        get_all_library_items "$token" "playlists" > "$library"
+        if [[ -s "$raw_library" ]]; then
+            library="$raw_library"
+            echo "Loaded from raw file" >&2
+        else
+            get_all_library_items "$token" "playlists" > "$library"
+            cat "$library" > "$raw_library"
+            library="$raw_library"
+            echo "Loaded from Spotify" >&2
+        fi
 
         # Find items that are in both
         both=$(jq -cn --slurpfile rec "$recents" --slurpfile lib "$library" '$lib[0] | map(select(.uri | IN($rec[0][].context.uri)))')
@@ -81,7 +106,7 @@ elif [[ "$is_recents" -eq 1 ]]; then
         # Save unique items to cache
         # Use Move to Front heuristic for cache
         echo "$both" | jq -r '.[].uri' | while IFS= read -r unique_uri; do
-           sed -i "/|^${unique_uri}|/d" "$cache"
+           sed -i "/${unique_uri}/d" "$cache"
            sed -i "1i\\${unique_uri}" "$cache"
         done
 
@@ -95,12 +120,16 @@ elif [[ "$is_recents" -eq 1 ]]; then
 
         echo "$sorted" > "$library"
     else
-        get_library_items "$token" "playlists" $offset $limit | jq -c '.items' > "$library"
+         if [[ -s "$raw_library" ]]; then
+            library="$raw_library"
+        else
+            get_library_items "$token" "playlists" $offset $limit | jq -c '.items' > "$library"
+            cat "$library" > "$raw_library"
+         fi
     fi
 
     # Now, return the library
 
     lib_string=$(cat "$library")
-    rm "$library"
     echo "$lib_string"
 fi

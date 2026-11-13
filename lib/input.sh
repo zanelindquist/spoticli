@@ -27,8 +27,9 @@ get_number_dialogue() {
         if [[ "$digit_2" == "" ]]; then
             num_ptr="$digit_1"
         elif [[ ! "$digit_2" =~ [0-9] ]]; then
-            # If they aren't typing a num_ptr, continue
-            continue
+            # If they aren't typing a num_ptr, exit
+            set_bottom_bar ""
+            return 0
         else
             num_ptr=$(( digit_1 * 10 + digit_2))
         fi
@@ -69,4 +70,11 @@ get_text_dialogue() {
         fi
         set_bottom_bar "${1}${text}"
     done
+}
+
+# Arguments: "error"
+error_message() {
+    set_bottom_bar "$1 Press any key to continue..."
+    read -rsn1
+    set_bottom_bar ""
 }
