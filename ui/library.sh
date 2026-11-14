@@ -16,6 +16,8 @@ fi
 
 # Rendering
 view_mode="library"
+search_filter_enabled=0
+search_query=""
 is_running=1
 force_redraw=1
 
@@ -23,23 +25,16 @@ print_middle_screen "$GREEN" "Loading library..."
 
 # Fetch library
 library=$(mktemp)
-"$PROJECT_ROOT/bin/spoticli" library $USER_ID -r -C -l 50 > "$library"
 library_cache="$user_temp_dir/library_cache"
-: > "$library_cache"
-# Save library to cache
-index=1
-cat "$library" | jq -r '.[] | "\(.uri)::\(.name)"' | while IFS= read -r fields; do
-    echo "${index}::${fields}" >> "$library_cache"
-    ((++index))
-done
-library_length=$(jq -r 'length' "$library")
+library_search_cache="$user_temp_dir/library_search_cache"
+
+# Pagination
 page=0
 page_length=7
-total_pages=$(( library_length / page_length ))
-if (( library_length % page_length != 0 )); then
-    ((++total_pages))
-fi
+library_length=0
+total_pages=1
 
+# Save library to cache
 
 #Arguments: "mode"
 print_commands() {
@@ -51,18 +46,62 @@ print_commands() {
     fi
 }
 
+cache_library() {
+    "$PROJECT_ROOT/bin/spoticli" library $USER_ID -r -C -l 50 > "$library"
+    : > "$library_cache"
+    index=1
+    cat "$library" | jq -r '.[] | "\(.uri)::\(.name)"' | while IFS= read -r fields; do
+        echo "${index}::${fields}" >> "$library_cache"
+        ((++index))
+    done
+    library_length=$(jq -r 'length' "$library")
+    total_pages=$(( library_length / page_length ))
+    if (( library_length % page_length != 0 )); then
+        ((++total_pages))
+    fi
+}
+
+# Instantiate cache
+cache_library
+
+
 while [[ "$is_running" -ne 0 ]]; do
     if [[ "$force_redraw" -eq 1 ]]; then
         clear
         draw_topbar 1
         print_commands "$view_mode"
 
-        display=$(jq -c ".[$((page * page_length)):$((page * page_length + page_length - 1))]" "$library")
+        filtered=""
+
+        if [[ "$search_query" != "" ]]; then
+            set_bottom_bar "Results for: '$search_query'"
+            # Filter library results
+            search_uris=$(jq -Rs 'split("\n") | map(select(length > 0))' "$library_search_cache")
+            filtered=$(jq -cn --argjson search_uris "$search_uris" --slurpfile library "$library" '$library[0] | map(select(.uri | IN($search_uris[])))')
+            
+            # Modify the library cache
+            : > "$library_cache"
+            index=1
+            echo "$filtered" | jq -r '.[] | "\(.uri)::\(.name)"' | while IFS= read -r fields; do
+                echo "${index}::${fields}" >> "$library_cache"
+                ((++index))
+            done
+            total_items=$(jq -r 'length' <<< "$filtered")
+            total_pages=$(( total_items / page_length ))
+            if (( total_items % page_length != 0 )); then
+                ((++total_pages))
+            fi
+
+        else
+            filtered=$(cat "$library")
+        fi
+
+        paginated=$(jq -c ".[$((page * page_length)):$((page * page_length + page_length - 1))]" <<< "$filtered")
 
         echo -e "\n"
         print_highlight "Page $(( page + 1 )) / $total_pages" 1 "$CHARCOAL" $SCREEN_WIDTH "center"
         # Display library based on pagination
-        print_playlist "$display" $(( SCREEN_WIDTH / 8 )) $(( SCREEN_WIDTH / 8 * 6 )) -1 $(( page * page_length )) 
+        print_playlist "$paginated" $(( SCREEN_WIDTH / 8 )) $(( SCREEN_WIDTH / 8 * 6 )) -1 $(( page * page_length )) 
 
         force_redraw=0
     fi
@@ -78,13 +117,28 @@ while [[ "$is_running" -ne 0 ]]; do
     case $key in
         's')
             # Arguments "bottom_prefix" <max_number> <ptr>
-            get_text_dialogue "search library: " query
+            get_text_dialogue "search library: " search_query
 
-            if [[ "$query" != "" ]]; then
-                cat "$library_cache"
-                awk -F'::' '{print $1, $3}' "$library_cache" | grep -E "$query"
+            if [[ "$search_query" != "" ]]; then
+                # Get the items that match the search and store them in the search cache
+                awk -F'::' "\$3 ~ /$search_query/ {print \$2}" "$library_cache" > "$library_search_cache"
+
+                search_filter_enabled=1
+                page=0
+                force_redraw=1
             fi
+
            ;;
+        $'\e')
+            if [[ "$search_query" != "" ]]; then
+                # Reset cache to original
+                cache_library
+
+                search_query=""
+                search_filter_enabled=0
+                force_redraw=1
+            fi
+            ;;
         # Pagination & movement
         'n'|'j'|'l')
             page=$(( ( page + 1 ) % total_pages ))
@@ -103,7 +157,6 @@ while [[ "$is_running" -ne 0 ]]; do
                 set_bottom_bar "Now playing playlist number ${number} from position 0"
             else
                 error_message "Action failed with status $status"
-                echo "$status"
             fi
            ;;
     esac

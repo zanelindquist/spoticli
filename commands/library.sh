@@ -88,14 +88,14 @@ elif [[ "$is_recents" -eq 1 ]]; then
             echo "[]" > "$recents"
         fi
         # Get the items from the library
+        # TODO: Clear library cache every now and then or give the user the option to do that
         if [[ -s "$raw_library" ]]; then
             library="$raw_library"
-            echo "Loaded from raw file" >&2
         else
             get_all_library_items "$token" "playlists" > "$library"
             cat "$library" > "$raw_library"
             library="$raw_library"
-            echo "Loaded from Spotify" >&2
+            echo -e "\nLoaded from Spotify" >&2
         fi
 
         # Find items that are in both
