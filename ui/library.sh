@@ -86,9 +86,9 @@ while [[ "$is_running" -ne 0 ]]; do
                 echo "${index}::${fields}" >> "$library_cache"
                 ((++index))
             done
-            total_items=$(jq -r 'length' <<< "$filtered")
-            total_pages=$(( total_items / page_length ))
-            if (( total_items % page_length != 0 )); then
+            library_length=$(jq -r 'length' <<< "$filtered")
+            total_pages=$(( library_length / page_length ))
+            if (( library_length % page_length != 0 )); then
                 ((++total_pages))
             fi
 
@@ -129,7 +129,7 @@ while [[ "$is_running" -ne 0 ]]; do
             fi
 
            ;;
-        $'\e')
+        $'\e'|'q')
             if [[ "$search_query" != "" ]]; then
                 # Reset cache to original
                 cache_library
