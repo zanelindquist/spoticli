@@ -26,6 +26,7 @@ token=$(get_token $USER_ID)
 is_silent=0
 offset=0
 
+# status=$("$PROJECT_ROOT/bin/spoticli" streamstate "$USER_ID" -o 1 -C "$playlist_uri")
 while getopts ":o:scqPRBNS:Q:T:C:" opt; do
     case "$opt" in
         's')
@@ -101,7 +102,8 @@ while getopts ":o:scqPRBNS:Q:T:C:" opt; do
             ;;
         'C')
             context_uri=$OPTARG
-
+            # Arguments: "token" "context_uri" <offset>
+            set_playback_context "$token" "$context_uri" "$offset"
             ;;
      esac
 done

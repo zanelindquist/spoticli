@@ -28,8 +28,8 @@ library_cache="$user_temp_dir/library_cache"
 : > "$library_cache"
 # Save library to cache
 index=1
-cat "$library" | jq -r '.[].uri' | while IFS= read -r uri; do
-    echo "${index}::${uri}" >> "$library_cache"
+cat "$library" | jq -r '.[] | "\(.uri)::\(.name)"' | while IFS= read -r fields; do
+    echo "${index}::${fields}" >> "$library_cache"
     ((++index))
 done
 library_length=$(jq -r 'length' "$library")
@@ -81,7 +81,8 @@ while [[ "$is_running" -ne 0 ]]; do
             get_text_dialogue "search library: " query
 
             if [[ "$query" != "" ]]; then
-                echo "$query"
+                cat "$library_cache"
+                awk -F'::' '{print $1, $3}' "$library_cache" | grep -E "$query"
             fi
            ;;
         # Pagination & movement
@@ -97,11 +98,12 @@ while [[ "$is_running" -ne 0 ]]; do
             get_number_dialogue "p" "$library_length" number
             playlist_uri=$(awk -F'::' "/^${number}::/ {print \$2}" "$library_cache")
             status=$("$PROJECT_ROOT/bin/spoticli" streamstate "$USER_ID" -o 1 -C "$playlist_uri")
-
+            
             if [[ "$status" -eq 204 ]]; then
                 set_bottom_bar "Now playing playlist number ${number} from position 0"
             else
                 error_message "Action failed with status $status"
+                echo "$status"
             fi
            ;;
     esac
