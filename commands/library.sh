@@ -9,6 +9,7 @@
 #  -r: recent compilation
 #    -R: Fetch recents
 #    -C: Use cache for recency ordering
+#  -t "uri": playlist tracks
 
 USER_ID=$1
 # Pop the user ID off so the flags work correctly
@@ -32,13 +33,15 @@ is_silent=0
 
 offset=0
 limit=10
+uri=""
 
 is_all=0
 is_recents=0
+is_tracks=0
 use_cache=0
 get_recents=0
 
-while getopts ":o:l:arCR" opt; do
+while getopts ":o:l:art:CR" opt; do
     case "$opt" in
         'o')
             offset="$OPTARG"
@@ -58,6 +61,10 @@ while getopts ":o:l:arCR" opt; do
         'R')
             get_recents=1
            ;;
+        't')
+            is_tracks=1
+            uri="$OPTARG"
+            ;;
      esac
 done
 
@@ -132,4 +139,6 @@ elif [[ "$is_recents" -eq 1 ]]; then
 
     lib_string=$(cat "$library")
     echo "$lib_string"
+elif [[ "$is_tracks" -eq 1 ]]; then
+    get_playlist_tracks "$token" "$uri"
 fi

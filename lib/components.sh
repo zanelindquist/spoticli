@@ -77,6 +77,9 @@ print_playlist() {
         name=$(echo "$song" | jq -r '.name')
         artists=$(echo "$song" | jq -r '.owner.display_name')
         image_url=$(echo "$song" | jq -r '.images[-1].url')
+        if [[ "$image_url" == "null" ]]; then
+            image_url=$(echo "$song" | jq -r '.album.images[-1].url')
+        fi
 
         if [[ $index -eq $4 ]]; then
             print_item "$name" "$artists" "$image_url" "$2" "$3" 1 "$(( start_index + index + 1))"

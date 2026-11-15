@@ -77,7 +77,7 @@ while [[ "$is_running" -ne 0 ]]; do
                     echo "${index}::${uri}" >> "$user_temp_dir/search_cache"
                     ((++index))
                 done < <( echo "$tracks" | jq -c '.[]' )
-
+                query=""
                 force_search_redraw=0
             fi
             ;;

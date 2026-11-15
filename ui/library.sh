@@ -27,18 +27,23 @@ print_middle_screen "$GREEN" "Loading library..."
 library=$(mktemp)
 library_cache="$user_temp_dir/library_cache"
 library_search_cache="$user_temp_dir/library_search_cache"
+# Hold a current playlist that we're viewing
+current_playlist="$user_temp_dir/current_playlist"
 
 # Pagination
 page=0
 page_length=7
 library_length=0
 total_pages=1
+playlist_page=0
+playlist_length=0
+playlist_total_pages=1
 
 # Save library to cache
 
 #Arguments: "mode"
 print_commands() {
-    if [[ $1 == "library" ]]; then
+    if [[ $1 == "library" || $1 == "playlist" ]]; then
         print_highlight "(g) Navigate topbar (s) Search library (j) Scroll down (k) Scroll up" 1 "$CHARCOAL" $SCREEN_WIDTH "center"
         print_highlight "(p) <number> Play playlist (v) <number> View playlist" 1 "$CHARCOAL" $SCREEN_WIDTH "center"
     else
@@ -71,37 +76,50 @@ while [[ "$is_running" -ne 0 ]]; do
         draw_topbar 1
         print_commands "$view_mode"
 
-        filtered=""
+        if [[ "$view_mode" == "library" ]]; then
+            filtered=""
 
-        if [[ "$search_query" != "" ]]; then
-            set_bottom_bar "Results for: '$search_query'"
-            # Filter library results
-            search_uris=$(jq -Rs 'split("\n") | map(select(length > 0))' "$library_search_cache")
-            filtered=$(jq -cn --argjson search_uris "$search_uris" --slurpfile library "$library" '$library[0] | map(select(.uri | IN($search_uris[])))')
-            
-            # Modify the library cache
-            : > "$library_cache"
-            index=1
-            echo "$filtered" | jq -r '.[] | "\(.uri)::\(.name)"' | while IFS= read -r fields; do
-                echo "${index}::${fields}" >> "$library_cache"
-                ((++index))
-            done
-            library_length=$(jq -r 'length' <<< "$filtered")
-            total_pages=$(( library_length / page_length ))
-            if (( library_length % page_length != 0 )); then
-                ((++total_pages))
+            if [[ "$search_query" != "" ]]; then
+                set_bottom_bar "Results for: '$search_query'"
+                # Filter library results
+                search_uris=$(jq -Rs 'split("\n") | map(select(length > 0))' "$library_search_cache")
+                filtered=$(jq -cn --argjson search_uris "$search_uris" --slurpfile library "$library" '$library[0] | map(select(.uri | IN($search_uris[])))')
+                
+                # Modify the library cache
+                : > "$library_cache"
+                index=1
+                echo "$filtered" | jq -r '.[] | "\(.uri)::\(.name)"' | while IFS= read -r fields; do
+                    echo "${index}::${fields}" >> "$library_cache"
+                    ((++index))
+                done
+                library_length=$(jq -r 'length' <<< "$filtered")
+                total_pages=$(( library_length / page_length ))
+                if (( library_length % page_length != 0 )); then
+                    ((++total_pages))
+                fi
+
+            else
+                filtered=$(cat "$library")
             fi
 
-        else
-            filtered=$(cat "$library")
+            paginated=$(jq -c ".[$((page * page_length)):$((page * page_length + page_length - 1))]" <<< "$filtered")
+
+            echo -e "\n"
+            print_highlight "Page $(( page + 1 )) / $total_pages" 1 "$CHARCOAL" $SCREEN_WIDTH "center"
+            # Display library based on pagination
+            print_playlist "$paginated" $(( SCREEN_WIDTH / 8 )) $(( SCREEN_WIDTH / 8 * 6 )) -1 $(( page * page_length ))
+
+
+        elif [[ "$view_mode" == "playlist" ]]; then
+            # Digest playlist cache
+            items=$(jq -c "[.items[].item][$((playlist_page * page_length)):$((playlist_page * page_length + page_length - 1))]" "$current_playlist")
+
+
+            echo -e "\n"
+            print_highlight "Page $(( playlist_page + 1 )) / $playlist_total_pages" 1 "$CHARCOAL" $SCREEN_WIDTH "center"
+            # Display library based on pagination
+            print_songs "$items" $(( SCREEN_WIDTH / 8 )) $(( SCREEN_WIDTH / 8 * 6 )) -1 $(( playlist_page * page_length )) 
         fi
-
-        paginated=$(jq -c ".[$((page * page_length)):$((page * page_length + page_length - 1))]" <<< "$filtered")
-
-        echo -e "\n"
-        print_highlight "Page $(( page + 1 )) / $total_pages" 1 "$CHARCOAL" $SCREEN_WIDTH "center"
-        # Display library based on pagination
-        print_playlist "$paginated" $(( SCREEN_WIDTH / 8 )) $(( SCREEN_WIDTH / 8 * 6 )) -1 $(( page * page_length )) 
 
         force_redraw=0
     fi
@@ -130,22 +148,35 @@ while [[ "$is_running" -ne 0 ]]; do
 
            ;;
         $'\e'|'q')
-            if [[ "$search_query" != "" ]]; then
-                # Reset cache to original
-                cache_library
+            if [[ "$view_mode" == "library" ]]; then
+                if [[ "$search_query" != "" ]]; then
+                    # Reset cache to original
+                    cache_library
 
-                search_query=""
-                search_filter_enabled=0
-                force_redraw=1
+                    search_query=""
+                    search_filter_enabled=0
+                    force_redraw=1
+                fi
+            elif [[ "$view_mode" == "playlist" ]]; then
+                view_mode="library"
+                force_redraw=0
             fi
             ;;
         # Pagination & movement
         'n'|'j'|'l')
-            page=$(( ( page + 1 ) % total_pages ))
+            if [[ "$view_mode" == "library" ]]; then
+                page=$(( ( page + 1 ) % total_pages ))
+            elif [[ "$view_mode" == "playlist" ]]; then
+                playlist_page=$(( ( playlist_page + 1 ) % playlist_total_pages ))
+            fi
             force_redraw=1
             ;;
         'b'|'k'|'h')
-            page=$(( ( page - 1 + total_pages ) % total_pages ))
+            if [[ "$view_mode" == "library" ]]; then
+                page=$(( ( page - 1 + total_pages ) % total_pages ))
+            elif [[ "$view_mode" == "playlist" ]]; then
+                playlist_page=$(( ( playlist_page - 1 + playlist_total_pages ) % playlist_total_pages ))
+            fi
             force_redraw=1
             ;;
         'p')
@@ -159,6 +190,33 @@ while [[ "$is_running" -ne 0 ]]; do
                 error_message "Action failed with status $status"
             fi
            ;;
+        'v')
+            get_number_dialogue "v" "$library_length" view_number
+            playlist_uri=$(awk -F'::' "/^${view_number}::/ {print \$2}" "$library_cache" | awk -F: '{print $3}')
+
+            # See if we already have it cached or not
+            # If current playlist is empty or we dont have the right one cached
+            if [[ ! -s "$current_playlist"  || $(grep "$playlist_uri" "$current_playlist") -eq 1 ]]; then
+                response=$("$PROJECT_ROOT/bin/spoticli" library "$USER_ID" -t "$playlist_uri")
+                # Save and overwrite the response to the cache
+                echo "$response" > "$current_playlist"
+                playlist_length=$(jq -r '.total' <<< "$response")
+                playlist_total_pages=$(( playlist_length / page_length ))
+                if (( playlist_length % page_length != 0 )); then
+                    ((++playlist_total_pages))
+                fi
+            else
+                playlist_length=$(jq -r '.total' < "$current_playlist")
+                playlist_total_pages=$(( playlist_length / page_length ))
+                if (( playlist_length % page_length != 0 )); then
+                    ((++playlist_total_pages))
+                fi
+            fi
+            
+            view_mode="playlist"
+            force_redraw=1
+            ;;
+
     esac
 
 done

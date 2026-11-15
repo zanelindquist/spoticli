@@ -161,3 +161,12 @@ get_recent_tracks() {
 
     echo "$response"
 }
+
+# Arguments: "token" "playlist_uri"
+get_playlist_tracks() {
+    token=$1
+    auth_header="Authorization: Bearer ${token}"
+    response=$(curl -s "${url}/playlists/${2}/items" -H "$auth_header")
+
+    echo "$response"
+}
