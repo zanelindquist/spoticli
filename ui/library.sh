@@ -20,6 +20,7 @@ search_filter_enabled=0
 search_query=""
 is_running=1
 force_redraw=1
+playlist_name=""
 
 print_middle_screen "$GREEN" "Loading library..."
 
@@ -109,14 +110,14 @@ while [[ "$is_running" -ne 0 ]]; do
             # Display library based on pagination
             print_playlist "$paginated" $(( SCREEN_WIDTH / 8 )) $(( SCREEN_WIDTH / 8 * 6 )) -1 $(( page * page_length ))
 
-
         elif [[ "$view_mode" == "playlist" ]]; then
             # Digest playlist cache
             items=$(jq -c "[.items[].item][$((playlist_page * page_length)):$((playlist_page * page_length + page_length - 1))]" "$current_playlist")
 
-
             echo -e "\n"
             print_highlight "Page $(( playlist_page + 1 )) / $playlist_total_pages" 1 "$CHARCOAL" $SCREEN_WIDTH "center"
+            echo -e "\n"
+            print_highlight "$playlist_name" 1 "$VIOLET" $SCREEN_WIDTH "center"
             # Display library based on pagination
             print_songs "$items" $(( SCREEN_WIDTH / 8 )) $(( SCREEN_WIDTH / 8 * 6 )) -1 $(( playlist_page * page_length )) 
         fi
@@ -198,7 +199,7 @@ while [[ "$is_running" -ne 0 ]]; do
                 status=$("$PROJECT_ROOT/bin/spoticli" streamstate "$USER_ID" -o "$track_uri" -t "uri" -C "spotify:playlist:$playlist_uri")
 
                 if [[ "$status" -eq 204 ]]; then
-                    set_bottom_bar "Now playing playlist number ${number} from position 0"
+                    set_bottom_bar "Now playing playlist from position $number"
                 else
                     error_message "Action failed with status $status"
                 fi
@@ -209,6 +210,7 @@ while [[ "$is_running" -ne 0 ]]; do
             if [[ "$view_mode" == "library" ]]; then
                 get_number_dialogue "v" "$library_length" view_number
                 playlist_uri=$(awk -F'::' "/^${view_number}::/ {print \$2}" "$library_cache" | awk -F: '{print $3}')
+                playlist_name=$(awk -F'::' "/^${view_number}::/ {print \$3}" "$library_cache")
 
                 # See if we already have it cached or not
                 # If current playlist is empty or we dont have the right one cached

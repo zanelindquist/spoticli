@@ -7,6 +7,7 @@ get_number_dialogue() {
     declare -n num_ptr=$3
     prefix="$1"
     set_bottom_bar "$prefix"
+
     read -rsn1 digit_1
     set_bottom_bar "${prefix}${digit_1}"
     sleep 0.1
