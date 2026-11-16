@@ -95,14 +95,16 @@ set_playback_track() {
 
     echo "$status"
 }
-# Arguments: "token" "context_uri" <offset>
+# Arguments: "token" "context_uri" <offset> "type"?
 set_playback_context() {
     token=$1
     auth_header="Authorization: Bearer ${token}"
+    type="position"
+    if [[ $4 != "" ]]; then type=$4; fi
     
     # Play on currently playing device
     device_id=$(curl -s "${url}/me/player/devices" -H "$auth_header" | jq -r '.devices[] | select(.is_active) | .id')
-    data=$( jq -n --arg p_uri "$2" --arg t_offset "$3" '{context_uri: $p_uri, offset: {position: $t_offset}}' )
+    data=$( jq -n --arg p_uri "$2" --arg t_offset "$3" "{context_uri: \$p_uri, offset: {$type: \$t_offset}}" )
 
     status=$(curl -s -o /dev/null -w "%{http_code}" -X PUT "${url}/me/player/play?device_id=${device_id}" -H "$auth_header" -H "Content-Type: application/json" -d "$data")
 

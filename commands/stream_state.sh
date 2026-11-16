@@ -5,6 +5,7 @@
 #   -c: currently playing
 #   -C: set playback context
 #     -o: integer offset for playback
+#     -t: type
 #   -T "uri": play track
 #   -P: pause music
 #   -R: resume music
@@ -25,9 +26,10 @@ token=$(get_token $USER_ID)
 
 is_silent=0
 offset=0
+type=""
 
 # status=$("$PROJECT_ROOT/bin/spoticli" streamstate "$USER_ID" -o 1 -C "$playlist_uri")
-while getopts ":o:scqPRBNS:Q:T:C:" opt; do
+while getopts ":o:t:scqPRBNS:Q:T:C:" opt; do
     case "$opt" in
         's')
             is_silent=1
@@ -100,10 +102,13 @@ while getopts ":o:scqPRBNS:Q:T:C:" opt; do
         'o')
             offset=$OPTARG
             ;;
+        't')
+            type=$OPTARG
+            ;;
         'C')
             context_uri=$OPTARG
-            # Arguments: "token" "context_uri" <offset>
-            set_playback_context "$token" "$context_uri" "$offset"
+            # Arguments: "token" "context_uri" <offset> "type?"
+            set_playback_context "$token" "$context_uri" "$offset" "$type"
             ;;
      esac
 done

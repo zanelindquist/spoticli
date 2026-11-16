@@ -29,7 +29,7 @@ library_cache="$user_temp_dir/library_cache"
 library_search_cache="$user_temp_dir/library_search_cache"
 # Hold a current playlist that we're viewing
 current_playlist="$user_temp_dir/current_playlist"
-
+playlist_search_cache="$user_temp_dir/playlist_search_cache"
 # Pagination
 page=0
 page_length=7
@@ -159,7 +159,7 @@ while [[ "$is_running" -ne 0 ]]; do
                 fi
             elif [[ "$view_mode" == "playlist" ]]; then
                 view_mode="library"
-                force_redraw=0
+                force_redraw=1
             fi
             ;;
         # Pagination & movement
@@ -167,6 +167,7 @@ while [[ "$is_running" -ne 0 ]]; do
             if [[ "$view_mode" == "library" ]]; then
                 page=$(( ( page + 1 ) % total_pages ))
             elif [[ "$view_mode" == "playlist" ]]; then
+                # TODO: HANDLE PAGINATION LIMITS RUNNING OUT
                 playlist_page=$(( ( playlist_page + 1 ) % playlist_total_pages ))
             fi
             force_redraw=1
@@ -180,41 +181,71 @@ while [[ "$is_running" -ne 0 ]]; do
             force_redraw=1
             ;;
         'p')
-            get_number_dialogue "p" "$library_length" number
-            playlist_uri=$(awk -F'::' "/^${number}::/ {print \$2}" "$library_cache")
-            status=$("$PROJECT_ROOT/bin/spoticli" streamstate "$USER_ID" -o 1 -C "$playlist_uri")
-            
-            if [[ "$status" -eq 204 ]]; then
-                set_bottom_bar "Now playing playlist number ${number} from position 0"
-            else
-                error_message "Action failed with status $status"
+            if [[ "$view_mode" == "library" ]]; then
+                get_number_dialogue "p" "$library_length" number
+                playlist_uri=$(awk -F'::' "/^${number}::/ {print \$2}" "$library_cache")
+                status=$("$PROJECT_ROOT/bin/spoticli" streamstate "$USER_ID" -o 1 -C "$playlist_uri")
+                
+                if [[ "$status" -eq 204 ]]; then
+                    set_bottom_bar "Now playing playlist number ${number} from position 0"
+                else
+                    error_message "Action failed with status $status"
+                fi
+            elif [[ "$view_mode" == "playlist" ]]; then
+                get_number_dialogue "p" "$playlist_length" number
+                track_uri=$(awk -F'::' "/^${number}::/ {print \$2}" "$playlist_search_cache")
+                playlist_uri=$(jq -r '.href' "$current_playlist" | cut -d'/' -f6)
+                status=$("$PROJECT_ROOT/bin/spoticli" streamstate "$USER_ID" -o "$track_uri" -t "uri" -C "spotify:playlist:$playlist_uri")
+
+                if [[ "$status" -eq 204 ]]; then
+                    set_bottom_bar "Now playing playlist number ${number} from position 0"
+                else
+                    error_message "Action failed with status $status"
+                fi
+
             fi
            ;;
         'v')
-            get_number_dialogue "v" "$library_length" view_number
-            playlist_uri=$(awk -F'::' "/^${view_number}::/ {print \$2}" "$library_cache" | awk -F: '{print $3}')
+            if [[ "$view_mode" == "library" ]]; then
+                get_number_dialogue "v" "$library_length" view_number
+                playlist_uri=$(awk -F'::' "/^${view_number}::/ {print \$2}" "$library_cache" | awk -F: '{print $3}')
 
-            # See if we already have it cached or not
-            # If current playlist is empty or we dont have the right one cached
-            if [[ ! -s "$current_playlist"  || $(grep "$playlist_uri" "$current_playlist") -eq 1 ]]; then
-                response=$("$PROJECT_ROOT/bin/spoticli" library "$USER_ID" -t "$playlist_uri")
-                # Save and overwrite the response to the cache
-                echo "$response" > "$current_playlist"
-                playlist_length=$(jq -r '.total' <<< "$response")
-                playlist_total_pages=$(( playlist_length / page_length ))
-                if (( playlist_length % page_length != 0 )); then
-                    ((++playlist_total_pages))
+                # See if we already have it cached or not
+                # If current playlist is empty or we dont have the right one cached
+                cached_uri=$(jq -r '.href' "$current_playlist" | cut -d'/' -f6)
+                if [[ ! -s "$current_playlist"  || "$cached_uri" != "$playlist_uri" ]]; then
+                    # Get the playlist
+                    response=$("$PROJECT_ROOT/bin/spoticli" library "$USER_ID" -t "$playlist_uri")
+                    # Save and overwrite the response to the cache
+                    echo "$response" > "$current_playlist"
+                    playlist_length=$(jq -r '.total' <<< "$response")
+                    playlist_total_pages=$(( playlist_length / page_length ))
+                    if (( playlist_length % page_length != 0 )); then
+                        ((++playlist_total_pages))
+                    fi
+
+                    # Write the playlist to the playlist_search_cache
+                    index=1
+                    : > "$playlist_search_cache"
+                    while IFS= read -r song_uri; do
+                        echo "$index::$song_uri" >> "$playlist_search_cache"
+                        ((++index))
+                    done < <(jq -r '.items[].item.uri' <<< "$response")
+                else
+                    playlist_length=$(jq -r '.total' < "$current_playlist")
+                    playlist_total_pages=$(( playlist_length / page_length ))
+                    if (( playlist_length % page_length != 0 )); then
+                        ((++playlist_total_pages))
+                    fi
                 fi
+                
+                view_mode="playlist"
+                force_redraw=1
             else
-                playlist_length=$(jq -r '.total' < "$current_playlist")
-                playlist_total_pages=$(( playlist_length / page_length ))
-                if (( playlist_length % page_length != 0 )); then
-                    ((++playlist_total_pages))
-                fi
+                set_bottom_bar "You cannot use 'v' in mode '$view_mode'. Press any key to continue..."
+                read -rsn1
+                set_bottom_bar ""
             fi
-            
-            view_mode="playlist"
-            force_redraw=1
             ;;
 
     esac
