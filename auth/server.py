@@ -11,6 +11,7 @@ import base64
 from dotenv import load_dotenv
 import time
 import uuid
+import shutil
 
 HOST = "127.0.0.1"
 PORT = 8080
@@ -115,27 +116,37 @@ class AuthHandler(BaseHTTPRequestHandler):
 			user_data_path = script_dir / f"../data/users/{user_id}"
 			# Create user's dir
 			user_data_path.mkdir(parents=True, exist_ok=True)
+			shutil.chown(user_data_path, user="root", group="spoticli")
+			os.chmod(user_data_path, 0o770)
 			
 			# Write token to file
 			with open(user_data_path / "token", "w") as file:
 				file.write(access_token)
 				file.close()
+			shutil.chown(user_data_path / "token", user="root", group="spoticli")
+			os.chmod(user_data_path / "token", 0o770)
 
 			# Record refresh token
 			with open(user_data_path / "refresh_token", "w") as file:
 				file.write(refresh_token)
 				file.close()
+			shutil.chown(user_data_path / "refresh_token", user="root", group="spoticli")
+			os.chmod(user_data_path / "refresh_token", 0o770)
 
 			# Record token expiration
 			with open(user_data_path / "token_expires_at", "w") as file:
 				expires_at = int(time.time()) + token_info["expires_in"]
 				file.write(str(expires_at))
+			shutil.chown(user_data_path / "token_expires_at", user="root", group="spoticli")
+			os.chmod(user_data_path / "token_expires_at", 0o770)
 			
 			# Save the user_id to the session file
 			with open(user_session_path / "user_id", "w") as file:
 				file.write(user_id)
 				file.close()
-		
+			shutil.chown(user_session_path / "user_id", user="root", group="spoticli")
+			os.chmod(user_session_path / "user_id", 0o770)
+				
 			# Finally update status path to indicate to the auth_wait function that we are complete and the user's files are ready
 			with open(user_session_path / "status", "w") as file:
 				file.write("authenticated")

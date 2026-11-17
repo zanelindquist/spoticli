@@ -13,8 +13,8 @@ fingerprint_user() {
 	elif [[ $ENVIRONMENT == "production" ]]; then
         output_var=$(cat "$SSH_USER_AUTH" | cut -d' ' -f3)
 		if [[ "$output_var" != "" ]]; then
-			# Do logic to find the user_id from the SSH Key fingerprint
-			return "Successfully fingerprinted SSH user"
+            # Everything is good, output_var is already set
+            echo ""
 		else
 			echo "Error: Public key fingerprinting failed"
 			exit 1

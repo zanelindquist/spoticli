@@ -6,7 +6,7 @@ PROJECT_ROOT="$(dirname "$(dirname "$(realpath "$0")")")"
 source "$PROJECT_ROOT/ui/topbar.sh"
 source "$PROJECT_ROOT/lib/print_colors.sh"
 
-selected_option=1
+selected_option=2
 hovered_option="$selected_option"
 total_options=5
 is_focused=0
