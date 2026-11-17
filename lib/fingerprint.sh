@@ -10,12 +10,11 @@ fingerprint_user() {
 	if [[ $ENVIRONMENT == "development" ]]; then
 		echo -e "\033[0;33mWARNING: In development mode. Public key fingerprinting not enabled.\033[0m"
 		read -p "Enter user: " output_var
-
 	elif [[ $ENVIRONMENT == "production" ]]; then
-		if [[ -v $SSH_USER_AUTH ]]; then
+        output_var=$(cat "$SSH_USER_AUTH" | cut -d' ' -f3)
+		if [[ "$output_var" != "" ]]; then
 			# Do logic to find the user_id from the SSH Key fingerprint
-			echo "PRODUCTION Public Key Fingerprint: $SSH_USER_AUTH"
-			return "production_generic"
+			return "Successfully fingerprinted SSH user"
 		else
 			echo "Error: Public key fingerprinting failed"
 			exit 1
