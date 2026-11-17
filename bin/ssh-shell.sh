@@ -2,8 +2,9 @@
 set -eo pipefail
 
 # Source functions
-source ./lib/user_mapping.sh
-source ./lib/fingerprint.sh
+PROJECT_ROOT="$(dirname "$(dirname "$(realpath "$0")")")"
+source "$PROJECT_ROOT/lib/user_mapping.sh"
+source "$PROJECT_ROOT/lib/fingerprint.sh"
 
 # Debug tacks
 is_verbose=false

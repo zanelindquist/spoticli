@@ -2,7 +2,8 @@
 # Responsible for identifying the user at entry via public SSH key in production or through name in development
 
 # Load environment variables
-source ./config/local.bash.env
+PROJECT_ROOT="$(dirname "$(dirname "$(realpath "$0")")")"
+source "$PROJECT_ROOT/config/prod.bash.env"
 
 fingerprint_user() {
 	declare -n output_var=$1

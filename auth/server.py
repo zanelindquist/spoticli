@@ -78,7 +78,7 @@ class AuthHandler(BaseHTTPRequestHandler):
 
 		# Get .env information
 		script_dir = Path(__file__).resolve().parent
-		env_path = (script_dir / "../config/local.env").resolve()
+		env_path = (script_dir / "../config/prod.env").resolve()
 		load_dotenv(dotenv_path=env_path, override=True)
 
 		client_id = os.getenv("SPOTIFY_CLIENT_ID")

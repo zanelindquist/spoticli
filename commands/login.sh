@@ -7,12 +7,12 @@ source "$PROJECT_ROOT/lib/auth.sh"
 
 
 # Load local development configuration if available.
-if [[ -f "$PROJECT_ROOT/config/local.bash.env" ]]; then
-    source "$PROJECT_ROOT/config/local.bash.env"
+if [[ -f "$PROJECT_ROOT/config/prod.bash.env" ]]; then
+    source "$PROJECT_ROOT/config/prod.bash.env"
 fi
 
-: "${SPOTIFY_CLIENT_ID:?Set SPOTIFY_CLIENT_ID in config/local.bash.env}"
-: "${SPOTIFY_REDIRECT_URI:?Set SPOTIFY_REDIRECT_URI in config/local.bash.env}"
+: "${SPOTIFY_CLIENT_ID:?Set SPOTIFY_CLIENT_ID in config/prod.bash.env}"
+: "${SPOTIFY_REDIRECT_URI:?Set SPOTIFY_REDIRECT_URI in config/prod.bash.env}"
 
 session_id=$(auth_create_session)
 state=$(auth_get_state "$session_id")
