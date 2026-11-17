@@ -5,14 +5,15 @@ set -euo pipefail
 PROJECT_ROOT="$(dirname "$(dirname "$(realpath "$0")")")"
 source "$PROJECT_ROOT/lib/auth.sh"
 
+APP_ENV="${APP_ENV:-local}"
 
 # Load local development configuration if available.
-if [[ -f "$PROJECT_ROOT/config/prod.bash.env" ]]; then
-    source "$PROJECT_ROOT/config/prod.bash.env"
+if [[ -f "$PROJECT_ROOT/config/${APP_ENV}.bash.env" ]]; then
+    source "$PROJECT_ROOT/config/${APP_ENV}.bash.env"
 fi
 
-: "${SPOTIFY_CLIENT_ID:?Set SPOTIFY_CLIENT_ID in config/prod.bash.env}"
-: "${SPOTIFY_REDIRECT_URI:?Set SPOTIFY_REDIRECT_URI in config/prod.bash.env}"
+: "${SPOTIFY_CLIENT_ID:?Set SPOTIFY_CLIENT_ID in config/local.bash.env}"
+: "${SPOTIFY_REDIRECT_URI:?Set SPOTIFY_REDIRECT_URI in config/local.bash.env}"
 
 session_id=$(auth_create_session)
 state=$(auth_get_state "$session_id")

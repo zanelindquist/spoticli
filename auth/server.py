@@ -16,6 +16,8 @@ import shutil
 HOST = "127.0.0.1"
 PORT = 8080
 
+APP_ENV = os.getenv("APP_ENV", "local")
+
 class AuthHandler(BaseHTTPRequestHandler):
 
 	def do_GET(self):
@@ -79,7 +81,7 @@ class AuthHandler(BaseHTTPRequestHandler):
 
 		# Get .env information
 		script_dir = Path(__file__).resolve().parent
-		env_path = (script_dir / "../config/prod.env").resolve()
+		env_path = (script_dir / f"../config/${APP_ENV}.env").resolve()
 		load_dotenv(dotenv_path=env_path, override=True)
 
 		client_id = os.getenv("SPOTIFY_CLIENT_ID")

@@ -3,7 +3,8 @@
 
 # Load environment variables
 PROJECT_ROOT="$(dirname "$(dirname "$(realpath "$0")")")"
-source "$PROJECT_ROOT/config/prod.bash.env"
+APP_ENV="${APP_ENV:-local}"
+source "$PROJECT_ROOT/config/${APP_ENV}.bash.env"
 
 fingerprint_user() {
 	declare -n output_var=$1
