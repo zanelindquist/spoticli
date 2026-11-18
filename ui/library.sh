@@ -145,6 +145,7 @@ while [[ "$is_running" -ne 0 ]]; do
                 search_filter_enabled=1
                 page=0
                 force_redraw=1
+                view_mode="library"
             fi
 
            ;;
@@ -249,7 +250,24 @@ while [[ "$is_running" -ne 0 ]]; do
                 set_bottom_bar ""
             fi
             ;;
+        'a')
+            if [[ "$view_mode" == "library" ]]; then
+                set_bottom_bar "Error: cannot queue songs in library view. Press any key to continue..."
+                read -rsn1
+            elif [[ "$view_mode" == "playlist" ]]; then
+                get_number_dialogue "a" "$playlist_length" number
+                track_uri=$(awk -F'::' "/^${number}::/ {print \$2}" "$playlist_search_cache")
+                status=$("$PROJECT_ROOT/bin/spoticli" streamstate "$USER_ID" -Q "$track_uri")
 
+                if [[ $? -eq 0 ]]; then
+                    set_bottom_bar "Queued song at position $number"
+                else
+                    error_message "Action failed with status $status"
+                fi
+
+            fi
+           ;;
+ 
     esac
 
 done
