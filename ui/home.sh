@@ -318,7 +318,6 @@ while [[ $is_running -ne 0 ]]; do
             fi
             ;;
         's')
-
             status=$("$PROJECT_ROOT/bin/spoticli" streamstate $USER_ID -S $is_shuffle)
             if [[ $status -eq 200 ]]; then
                 printf "\e[4;0H\e[K\e[K"
@@ -327,6 +326,9 @@ while [[ $is_running -ne 0 ]]; do
                 printf "\e[u"
 
                 is_shuffle=$(( (is_shuffle + 1) % 2))
+                if [[ "$view_mode" == "queue" ]]; then
+                    force_queue_redraw=1
+                fi
             fi
             ;;
         'q')
