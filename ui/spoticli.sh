@@ -130,7 +130,7 @@ while true; do
                 home
                 ;;
             3)
-                echo "history"
+                "$PROJECT_ROOT/ui/history.sh" $USER_ID
                 ;;
             4)
                 "$PROJECT_ROOT/ui/user.sh" $USER_ID

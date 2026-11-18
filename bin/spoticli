@@ -25,6 +25,10 @@ case "$1" in
         # Arguments: <user_id>
         "$PROJECT_ROOT/commands/library.sh" $2 "${@:3}"
         ;;
+    history)
+        # Arguments: <user_id>
+        "$PROJECT_ROOT/commands/history.sh" $2 "${@:3}"
+        ;;
     *)
 		echo "Usage: spoticli <command>"
 		echo
