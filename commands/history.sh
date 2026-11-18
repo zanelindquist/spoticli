@@ -37,7 +37,7 @@ while getopts ":o:l:h" opt; do
             offset=$OPTARG
             ;;
         l)
-            length=$OPTARG
+            limit=$OPTARG
             ;;
         h)
             is_history=1

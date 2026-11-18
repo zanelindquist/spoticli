@@ -38,14 +38,14 @@ total_pages=1
 print_commands() {
     if [[ "$1" == "history" ]]; then
         print_highlight "(g) Navigate topbar (j) Scroll down (k) Scroll up" 1 "$CHARCOAL" $SCREEN_WIDTH "center"
-        print_highlight "(p) <number> Play track (r) Refresh page" 1 "$CHARCOAL" $SCREEN_WIDTH "center"
+        print_highlight "(a) <number> Queue track (p) <number> Play track (r) Refresh page" 1 "$CHARCOAL" $SCREEN_WIDTH "center"
     else
         echo -e "Unknown view mode\n\n"
     fi
 }
 
 cache_history() {
-    "$PROJECT_ROOT/bin/spoticli" history $USER_ID -h -l 20 > "$current_history"
+    "$PROJECT_ROOT/bin/spoticli" history $USER_ID -h -l 30 > "$current_history"
     uris=$(jq -r '.items[].track.uri' "$current_history")
     : > "$history_cache"
     index=1
@@ -53,7 +53,7 @@ cache_history() {
         echo "${index}::${uri}" >> "$history_cache"
         ((++index))
     done
-    history_length=$(jq -r '.total' "$current_history")
+    history_length=$(jq -r '.items | length' "$current_history")
     total_pages=$(( history_length / page_length ))
     if (( history_length % page_length != 0 )); then
         ((++total_pages))
@@ -66,17 +66,17 @@ cache_history
 while [[ "$is_running" -ne 0 ]]; do
     if [[ "$force_redraw" -eq 1 ]]; then
         clear
-        draw_topbar 1
+        draw_topbar 3
         print_commands "$view_mode"
 
-        items=$(jq -c ".items[$((playlist_page * page_length)):$((page * page_length + page_length - 1))] | map(.track)" "$current_history")
+        items=$(jq -c ".items[$((page * page_length)):$((page * page_length + page_length - 1))] | map(.track)" "$current_history")
 
         echo -e "\n"
-        print_highlight "Page $(( playlist_page + 1 )) / $total_pages" 1 "$CHARCOAL" $SCREEN_WIDTH "center"
+        print_highlight "Page $(( page + 1 )) / $total_pages" 1 "$CHARCOAL" $SCREEN_WIDTH "center"
         echo -e "\n"
         print_highlight "Listening History" 1 "$VIOLET" $SCREEN_WIDTH "center"
         # Display library based on pagination
-        print_songs "$items" $(( SCREEN_WIDTH / 8 )) $(( SCREEN_WIDTH / 8 * 6 )) -1 $(( playlist_page * page_length )) 
+        print_songs "$items" $(( SCREEN_WIDTH / 8 )) $(( SCREEN_WIDTH / 8 * 6 )) -1 $(( page * page_length )) 
 
     fi
 
@@ -118,7 +118,21 @@ while [[ "$is_running" -ne 0 ]]; do
                 fi
 
             fi
-           ;;
+            ;;
+        'a')
+            if [[ "$view_mode" == "history" ]]; then
+                get_number_dialogue "a" "$history_length" number
+                track_uri=$(awk -F'::' "/^${number}::/ {print \$2}" "$history_cache")
+                status=$("$PROJECT_ROOT/bin/spoticli" streamstate "$USER_ID" -Q "$track_uri")
+
+                if [[ $? -eq 0 ]]; then
+                    set_bottom_bar "Queued song at position $number"
+                else
+                    error_message "Action failed with status $status"
+                fi
+
+            fi
+         ;;
     esac
 
 done
