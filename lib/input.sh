@@ -79,3 +79,46 @@ error_message() {
     read -rsn1
     set_bottom_bar ""
 }
+
+# Arguments: <ptr>selected_number ["options1", "option2"...]
+get_item_selection() {
+    declare -n selection=$1
+    selection=0
+    still_selecting=1
+    canceled=0
+    shift
+    local -a items=("$@")
+    num_items=${#items[@]}
+
+    while [[ $still_selecting -eq 1 ]]; do
+        set_bottom_bars "$num_items" $selection "${items[@]}"
+
+        IFS= read -rsn1 cycle_key
+
+        # Detect escape sequences
+        if [[ "$cycle_key" == $'\e' ]]; then
+            read -rsn2 -t 0.1 cycle_key
+            # If they press escape
+            if [[ "$cycle_key" == "" ]]; then
+                set_bottom_bars "$num_items"
+                canceled=1
+                selection=-1
+                still_selecting=0
+            fi
+        fi
+
+        case "$cycle_key" in
+            $'\t'|'j')
+                selection=$(( (selection + 1) % num_items ))
+                ;;
+            $'[Z'|'k')
+                selection=$(( (selection - 1 + num_items) % num_items ))
+                ;;
+            '')
+                still_selecting=0
+                ;;
+        esac
+    done
+
+    set_bottom_bars "$num_items"
+}

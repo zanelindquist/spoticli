@@ -290,7 +290,7 @@ while [[ $is_running -ne 0 ]]; do
             fi
             ;;
         'n'|'j'|'l')
-            if [[ "$view_mode" == "now-playing" ]]; then
+            if [[ "$view_mode" == "now-playing" && "$key" == "n" ]]; then
                 status=$("$PROJECT_ROOT/bin/spoticli" streamstate $USER_ID -N)
             elif [[ "$view_mode" == "queue" ]]; then
                 if (( queue_offset + queue_page_size < queue_total_size )); then
@@ -299,12 +299,10 @@ while [[ $is_running -ne 0 ]]; do
                     queue_offset=0
                 fi
                 force_queue_redraw=1
-            else
-                echo -e "Unknown view mode\n"
             fi
             ;;
         'b'|'k'|'h')
-            if [[ "$view_mode" == "now-playing" ]]; then
+            if [[ "$view_mode" == "now-playing" && "$key" == "b" ]]; then
                 status=$("$PROJECT_ROOT/bin/spoticli" streamstate $USER_ID -B)
             elif [[ "$view_mode" == "queue" ]]; then
                 if (( queue_offset - queue_page_size >= 0 )); then
@@ -313,8 +311,6 @@ while [[ $is_running -ne 0 ]]; do
                     queue_offset=$(( queue_total_size - queue_page_size + (queue_total_size % queue_page_size) ))
                 fi
                 force_queue_redraw=1
-            else
-                echo -e "Unknown view mode\n"
             fi
             ;;
         's')
@@ -382,47 +378,21 @@ while [[ $is_running -ne 0 ]]; do
             fi
             ;;
         'a')
-            hovered_item=0
-            still_selecting=1
-            num_items=5
-            canceled=0
             # Add a song to the queue
             get_text_dialogue "queue song: " song_name
             results=$("$PROJECT_ROOT/bin/spoticli" search $USER_ID -q "$song_name")
+            # Track names
             mapfile -t track_names < <(echo "$results" | jq -r ".tracks.items[].name")
-            num_items=${#track_names[@]}
+            # Get the number selection
+            get_item_selection num_selection "${track_names[@]}"
 
-            while [[ $still_selecting -eq 1 ]]; do
-                set_bottom_bars "$num_items" $hovered_item "${track_names[@]}"
-
-                IFS= read -rsn1 cycle_key
-
-                # Detect escape sequences
-                if [[ "$cycle_key" == $'\e' ]]; then
-                    read -rsn2 -t 0.1 cycle_key
-                    # If they press escape
-                    if [[ "$cycle_key" == "" ]]; then
-                        set_bottom_bars "$num_items"
-                        canceled=1
-                    fi
-                fi
-
-                if [[ "$cycle_key" == $'\t' ]]; then
-                    hovered_item=$(( (hovered_item + 1) % num_items ))
-                elif [[ "$cycle_key" == $'[Z' ]]; then
-                    hovered_item=$(( (hovered_item - 1 + num_items) % num_items ))
-                elif [[ "$cycle_key" == "" ]]; then
-                    still_selecting=0
-                fi
-            done
-
-            if [[ $canceled -eq 0 ]]; then
-                queue_uri=$( jq -r ".tracks.items[$hovered_item].uri" <<< "$results" )
-                queue_name=$( jq -r ".tracks.items[$hovered_item].name" <<< "$results" )
+            if [[ "$num_selection" -gt -1 ]]; then
+                queue_uri=$( jq -r ".tracks.items[$num_selection].uri" <<< "$results" )
+                queue_name=$( jq -r ".tracks.items[$num_selection].name" <<< "$results" )
                 response=$("$PROJECT_ROOT/bin/spoticli" streamstate "$USER_ID" -Q "$queue_uri")
                 set_bottom_bar "Queued '$queue_name'"
-                sleep 0.5
-                set_bottom_bars "$num_items"
+                read -rsn1 -t 2
+                set_bottom_bar ""
             fi
 
             ;;
