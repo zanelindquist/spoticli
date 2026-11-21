@@ -382,10 +382,48 @@ while [[ $is_running -ne 0 ]]; do
             fi
             ;;
         'a')
+            hovered_item=0
+            still_selecting=1
+            num_items=5
+            canceled=0
             # Add a song to the queue
+            get_text_dialogue "queue song: " song_name
+            results=$("$PROJECT_ROOT/bin/spoticli" search $USER_ID -q "$song_name")
+            mapfile -t track_names < <(echo "$results" | jq -r ".tracks.items[].name")
+            num_items=${#track_names[@]}
 
-            # Open the text bar
-            set_bottom_bar "a <search>"
+            while [[ $still_selecting -eq 1 ]]; do
+                set_bottom_bars "$num_items" $hovered_item "${track_names[@]}"
+
+                IFS= read -rsn1 cycle_key
+
+                # Detect escape sequences
+                if [[ "$cycle_key" == $'\e' ]]; then
+                    read -rsn2 -t 0.1 cycle_key
+                    # If they press escape
+                    if [[ "$cycle_key" == "" ]]; then
+                        set_bottom_bars "$num_items"
+                        canceled=1
+                    fi
+                fi
+
+                if [[ "$cycle_key" == $'\t' ]]; then
+                    hovered_item=$(( (hovered_item + 1) % num_items ))
+                elif [[ "$cycle_key" == $'[Z' ]]; then
+                    hovered_item=$(( (hovered_item - 1 + num_items) % num_items ))
+                elif [[ "$cycle_key" == "" ]]; then
+                    still_selecting=0
+                fi
+            done
+
+            if [[ $canceled -eq 0 ]]; then
+                queue_uri=$( jq -r ".tracks.items[$hovered_item].uri" <<< "$results" )
+                queue_name=$( jq -r ".tracks.items[$hovered_item].name" <<< "$results" )
+                response=$("$PROJECT_ROOT/bin/spoticli" streamstate "$USER_ID" -Q "$queue_uri")
+                set_bottom_bar "Queued '$queue_name'"
+                sleep 0.5
+                set_bottom_bars "$num_items"
+            fi
 
             ;;
         $'\e')

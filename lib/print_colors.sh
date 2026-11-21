@@ -18,7 +18,7 @@ GREEN_BLACK=$'\e[30;42m'
 GREEN_WHITE=$'\e[37;42m'
 WHITE_HIGHLIGHT=$'\e[97;107m'
 CHARCOAL_BACKGROUND=$'\e[48;5;234m'
-
+HIGHLIGHT_BACKGROUND=$'\e[48;5;238m'
 
 # Print colors
 
@@ -69,6 +69,37 @@ set_bottom_bar() {
         printf "%b%-${cols}s%b" "$CHARCOAL_BACKGROUND" "$1" "$RESET"
     fi
     # Return to where cursor was
+    tput rc
+}
+
+# Arguments: <num_of_lines> <highlighted_num> ["line_content_1" "line_content_2" ...]
+set_bottom_bars() {
+    local cols=$(tput cols)
+    local lines=$(tput lines)
+    local num=$1
+
+    # Hold current cursor position
+    tput sc
+
+    # Position cursor at the beginning of the bottom bars
+    tput cup $((lines - num - 2)) 0
+
+    if [[ $# -eq 1 ]]; then
+        # Remove bottom bars
+        tput ed
+    else
+        # Print bars
+        for ((i = 3; i <= num + 2; i++)); do
+            # Highlight background, if specified
+            if (( i - 3 == $2 )); then
+                printf "%b%-*s%b\n" "$HIGHLIGHT_BACKGROUND" "$cols" "${!i}" "$RESET"
+            else
+                printf "%b%-*s%b\n" "$CHARCOAL_BACKGROUND" "$cols" "${!i}" "$RESET"
+            fi
+        done
+    fi
+
+    # Return cursor to previous position
     tput rc
 }
 
