@@ -40,7 +40,7 @@ queue_total_size=20
 print_commands() {
     if [[ $1 == "now-playing" ]]; then
         print_highlight "(g) Navigate topbar (p) Pause/play    (n) Next track    (b) Previous track" 1 "$CHARCOAL" $SCREEN_WIDTH "center"
-        print_highlight "(s) Toggle shuffle (q) View queue" 1 "$CHARCOAL" $SCREEN_WIDTH "center"
+        print_highlight "(s) Toggle shuffle (q) View queue (a) Queue song (P) Play song" 1 "$CHARCOAL" $SCREEN_WIDTH "center"
     elif [[ $1 == "queue" ]]; then
         print_highlight "(g) Navigate topbar (q) View now playing (n) Next page (b) Previous page" 1 "$CHARCOAL" $SCREEN_WIDTH "center"
         print_highlight "(d) <number>? Remove track from queue (a) Insert song into queue" 1 "$CHARCOAL" $SCREEN_WIDTH "center"
@@ -377,24 +377,45 @@ while [[ $is_running -ne 0 ]]; do
                 force_queue_redraw=1
             fi
             ;;
+        'P')
+            # Add a song to the queue
+            get_text_dialogue "play song: " song_name
+            if [[ "$song_name" != "" ]]; then
+                results=$("$PROJECT_ROOT/bin/spoticli" search $USER_ID -q "$song_name")
+                # Track names
+                mapfile -t track_names < <(echo "$results" | jq -r ".tracks.items[].name")
+                # Get the number selection
+                get_item_selection num_selection "${track_names[@]}"
+
+                if [[ "$num_selection" -gt -1 ]]; then
+                    play_uri=$( jq -r ".tracks.items[$num_selection].uri" <<< "$results" )
+                    play_name=$( jq -r ".tracks.items[$num_selection].name" <<< "$results" )
+                    response=$("$PROJECT_ROOT/bin/spoticli" streamstate "$USER_ID" -T "$play_uri")
+                    set_bottom_bar "Now playing '$play_name'"
+                    read -rsn1 -t 2
+                    set_bottom_bar ""
+                fi
+            fi
+            ;;
         'a')
             # Add a song to the queue
             get_text_dialogue "queue song: " song_name
-            results=$("$PROJECT_ROOT/bin/spoticli" search $USER_ID -q "$song_name")
-            # Track names
-            mapfile -t track_names < <(echo "$results" | jq -r ".tracks.items[].name")
-            # Get the number selection
-            get_item_selection num_selection "${track_names[@]}"
+            if [[ "$song_name" != "" ]]; then
+                results=$("$PROJECT_ROOT/bin/spoticli" search $USER_ID -q "$song_name")
+                # Track names
+                mapfile -t track_names < <(echo "$results" | jq -r ".tracks.items[].name")
+                # Get the number selection
+                get_item_selection num_selection "${track_names[@]}"
 
-            if [[ "$num_selection" -gt -1 ]]; then
-                queue_uri=$( jq -r ".tracks.items[$num_selection].uri" <<< "$results" )
-                queue_name=$( jq -r ".tracks.items[$num_selection].name" <<< "$results" )
-                response=$("$PROJECT_ROOT/bin/spoticli" streamstate "$USER_ID" -Q "$queue_uri")
-                set_bottom_bar "Queued '$queue_name'"
-                read -rsn1 -t 2
-                set_bottom_bar ""
+                if [[ "$num_selection" -gt -1 ]]; then
+                    queue_uri=$( jq -r ".tracks.items[$num_selection].uri" <<< "$results" )
+                    queue_name=$( jq -r ".tracks.items[$num_selection].name" <<< "$results" )
+                    response=$("$PROJECT_ROOT/bin/spoticli" streamstate "$USER_ID" -Q "$queue_uri")
+                    set_bottom_bar "Queued '$queue_name'"
+                    read -rsn1 -t 2
+                    set_bottom_bar ""
+                fi
             fi
-
             ;;
         $'\e')
             set_bottom_bar ""

@@ -100,7 +100,6 @@ get_item_selection() {
             read -rsn2 -t 0.1 cycle_key
             # If they press escape
             if [[ "$cycle_key" == "" ]]; then
-                set_bottom_bars "$num_items"
                 canceled=1
                 selection=-1
                 still_selecting=0
