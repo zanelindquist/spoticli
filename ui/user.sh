@@ -34,7 +34,7 @@ while [[ "$is_running" -ne 0 ]]; do
     # Render results
     if [[ "$force_redraw" -eq 1 ]]; then
         clear
-        draw_topbar 0
+        draw_topbar 4
         print_commands $view_mode
     fi
 

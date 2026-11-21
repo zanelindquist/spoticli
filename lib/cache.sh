@@ -3,7 +3,7 @@
 # LRU Caching
 
 PROJECT_ROOT="$(dirname "$(dirname "$(realpath "$0")")")"
-CACHE_SIZE=50
+CACHE_SIZE=300
 
 # Image will be stored in /images/w<width>/854abc3298cab.ansi
 image_cache_path="$PROJECT_ROOT/data/cache/images"
@@ -36,7 +36,7 @@ get_image_from_cache() {
 
     # Create paths to the files if they don't exist
     if [[ ! -f "$img_manifest" ]]; then
-        touch "$img_manifest"
+        echo "" > "$img_manifest"
     fi
     if [[ ! -e "$image_dir" ]]; then
         mkdir -p "$image_dir"
@@ -59,7 +59,7 @@ get_image_from_cache() {
             # Remove from end of manifest
             sed -i '$d' "$img_manifest"
             # Delete image ascii file
-            rm "$image_cache_path/w${2}/$removal_id"
+            rm "$image_cache_path/w${2}/${removal_id}.ansi"
         fi
 
         image_ansi=$(ascii-image-converter -C "$1" -W "$2" --threshold 0)
