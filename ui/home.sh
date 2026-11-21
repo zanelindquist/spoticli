@@ -43,7 +43,7 @@ print_commands() {
         print_highlight "(s) Toggle shuffle (q) View queue (a) Queue song (P) Play song" 1 "$CHARCOAL" $SCREEN_WIDTH "center"
     elif [[ $1 == "queue" ]]; then
         print_highlight "(g) Navigate topbar (q) View now playing (n) Next page (b) Previous page" 1 "$CHARCOAL" $SCREEN_WIDTH "center"
-        print_highlight "(d) <number>? Remove track from queue (a) Insert song into queue" 1 "$CHARCOAL" $SCREEN_WIDTH "center"
+        print_highlight "(d) <number>? Remove track from queue (a) Queue song" 1 "$CHARCOAL" $SCREEN_WIDTH "center"
     else
         echo -e "Unknown view mode\n\n"
     fi
@@ -414,6 +414,7 @@ while [[ $is_running -ne 0 ]]; do
                     set_bottom_bar "Queued '$queue_name'"
                     read -rsn1 -t 2
                     set_bottom_bar ""
+                    force_queue_redraw=1
                 fi
             fi
             ;;

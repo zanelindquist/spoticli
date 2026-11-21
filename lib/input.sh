@@ -41,7 +41,7 @@ get_number_dialogue() {
     set_bottom_bar "${prefix}${num_ptr}"
 }
 
-# Arguments: "prefix" string<ptr>
+# arguments: "prefix" string<ptr>
 get_text_dialogue() {
     declare -n text=$2
     still_typing=1
@@ -49,23 +49,23 @@ get_text_dialogue() {
     set_bottom_bar "$1"
     while [[ "$still_typing" -eq 1 && "$user_canceled" -ne 1 ]]; do
         IFS= read -rsn1 next_letter
-        # If they hit enter
-        if [[ -z "$next_letter" ]]; then
+        # if they hit enter
+        if [[ "$next_letter" == "" ]]; then
             still_typing=0
             set_bottom_bar ""
             continue
         fi
-        # Handle escape key pressed
+        # handle escape key pressed
         if [[ "$next_letter" == $'\e' ]]; then
             set_bottom_bar ""
-            # Set text to "" if they cancedled
+            # set text to "" if they cancedled
             text=""
             user_canceled=1
             break
         fi
-        # Handle delete key
+        # handle delete key
         if [[ "$next_letter" == $'\x7f' || "$next_letter" == $'\x08' ]]; then
-            text="${query%?}"
+            text="${text%?}"
         else
             text+=$next_letter
         fi
