@@ -12,8 +12,13 @@ get_number_dialogue() {
     set_bottom_bar "${prefix}${digit_1}"
     sleep 0.1
 
+    # If it's escape, exit
+    if [[ "$digit_1" == $'\e' ]]; then
+        set_bottom_bar ""
+        num_ptr=-1
+        return 0
     # Make sure they are typing a num_ptr
-    if [[ ! "$digit_1" =~ [0-9] || "$digit_1" -eq 0 ]]; then
+    elif [[ ! "$digit_1" =~ [0-9] || "$digit_1" -eq 0 ]]; then
         # If they aren't typing a num_ptr, continue
         set_bottom_bar "${prefix}: Input must be a number. Press any key to continue."
         read -rsn1
@@ -44,6 +49,7 @@ get_number_dialogue() {
 # arguments: "prefix" string<ptr>
 get_text_dialogue() {
     declare -n text=$2
+    text=""
     still_typing=1
     user_canceled=0
     set_bottom_bar "$1"

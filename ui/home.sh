@@ -72,8 +72,10 @@ while [[ $is_running -ne 0 ]]; do
     # ===== Fetch data =====
 
     response=$(mktemp) || return 1
-
     "$PROJECT_ROOT/bin/spoticli" streamstate "$USER_ID" -c > "$response"
+    status=$(head -n1 < "$response")
+    # Remove the status
+    sed -i '1d' "$response"
 
     # Check if file still exists
     if [[ ! -f "$response" ]]; then
@@ -81,8 +83,45 @@ while [[ $is_running -ne 0 ]]; do
         exit 1
     fi
 
+    if [[ "$status" -eq 204 ]]; then
+        print_middle_screen "$VIOLET" "No currently playing song"
+        devices=$("$PROJECT_ROOT/bin/spoticli" streamstate "$USER_ID" -d)
+        devices_length=$(jq -r '.devices | length' <<< "$devices")
+        if (( devices_length == 1 )); then
+            device_uri=$(jq -r '.devices[0].id' <<< "$devices")
+            if [[ ! -f "$user_temp_dir/last_played_uri" ]]; then
+                clear
+                draw_topbar 2
+                print_commands $view_mode $is_playing $is_shuffle
+                print_middle_screen "$VIOLET" "No playback found" "Please start a Spotify playback session on one of your devices"
+            else
+                previous_track_uri=$(cat "$user_temp_dir/last_played_uri" | head -n 1 | sed 's/\r$//g')
+                status=$("$PROJECT_ROOT/bin/spoticli" streamstate "$USER_ID" -i "$device_uri" -T "$previous_track_uri")
+                if [[ "$status" -eq 200 ]]; then
+                    "$PROJECT_ROOT/bin/spoticli" streamstate "$USER_ID" -c > "$response"
+                    status=$(head -n1 < "$response")
+                    tail -n +2 <<< "$response" > "$response"
+                fi
+            fi
+        elif (( devices_length > 1 )); then
+            # Prompt the user to select from devices
+            # Arguments: <ptr>selected_number ["options1", "option2"...]
+            # TODO: Allow use to do device selection
+            get_item_selection selection "Device 1" "Device 2"
+        else
+            clear
+            draw_topbar 2
+            print_commands $view_mode $is_playing $is_shuffle
+            print_middle_screen "$VIOLET" "No playback found" "Please start a Spotify playback session on one of your devices"
+        fi
+        # Prompt the user to select a device to start playback on
+        rm "$response"
+        exit 0
+    fi
+
     # Check if file is empty
     if [[ ! -s "$response" ]]; then
+        cat "$response"
         echo "Error: No response body for file"
         rm -f "$response"
         exit 1
@@ -102,11 +141,8 @@ while [[ $is_running -ne 0 ]]; do
     progress_bars=$( echo "($SCREEN_WIDTH / $progress_width_ratio) * $progress_ms / $duration_ms" | bc )
     progress_bars_remaining=$( echo "($SCREEN_WIDTH / $progress_width_ratio) - $progress_bars - 1" | bc )
 
-    if [[ -v $name || "$name" == "" ]]; then
-        echo "No currently playing song"
-        rm "$response"
-        exit 1
-    fi
+    # Store the track as the last streamed track
+    echo "$uri" > "$user_temp_dir/last_played_uri"
 
     # Unqueue logic for skipping songs
 
@@ -281,12 +317,12 @@ while [[ $is_running -ne 0 ]]; do
             fi
 
             if [[ "$status" -eq 200 ]]; then
+                stty -echo
                 printf "\e[4;0H\e[K\e[K"
                 print_commands $view_mode $is_playing $is_shuffle
                 # Restore cursor position
                 printf "\e[u"
-            else 
-                printf "Error while playing music"
+                stty echo
             fi
             ;;
         'n'|'j'|'l')

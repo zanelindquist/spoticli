@@ -3,6 +3,8 @@
 # Arguments COMMAND "user_id" [OPTIONS]
 # OPTIONS:
 #   -c: currently playing
+#   -d: get devices
+#   -i: device id
 #   -C: set playback context
 #     -o: integer offset for playback
 #     -t: type
@@ -27,15 +29,21 @@ token=$(get_token $USER_ID)
 is_silent=0
 offset=0
 type=""
+device_id=""
 
-# status=$("$PROJECT_ROOT/bin/spoticli" streamstate "$USER_ID" -o 1 -C "$playlist_uri")
-while getopts ":o:t:scqPRBNS:Q:T:C:" opt; do
+while getopts ":po:t:di:scqdPRBNS:Q:T:C:" opt; do
     case "$opt" in
         's')
             is_silent=1
             ;;
+        'i')
+            device_id=$OPTARG
+            ;;
         'c')
             currently_playing $token
+            ;;
+        'd')
+            get_devices "$token"
             ;;
         'q')
             get_queue $token
@@ -96,8 +104,7 @@ while getopts ":o:t:scqPRBNS:Q:T:C:" opt; do
             queue_song "$token" "$uri"
             ;;
         'T')
-            uri=$OPTARG
-            set_playback_track "$token" "$uri"
+            set_playback_track "$token" "$OPTARG" "$device_id"
             ;;
         'o')
             offset=$OPTARG

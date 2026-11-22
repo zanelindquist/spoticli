@@ -6,12 +6,20 @@ url="https://api.spotify.com/v1"
 
 # Arguments: "token"
 currently_playing() {
-    token=$1
-    auth_header="Authorization: Bearer ${token}"
-    response=$(curl -s "${url}/me/player/currently-playing" -H "$auth_header")
+    local token=$1
 
+    local response
+    response=$(curl -s -w "\n%{http_code}" "${url}/me/player/currently-playing" -H "Authorization: Bearer ${token}")
+
+    local status
+    status=$(tail -n1 <<< "$response")
+
+    response=$(sed '$d' <<< "$response")
+
+    echo "$status"
     echo "$response"
 }
+
 # Arguments: "token"
 play_music(){
     token=$1
@@ -79,7 +87,7 @@ queue_song() {
 
     echo "$response"
 }
-# Arguments: "token" "track_uri"
+# Arguments: "token" "track_uri" "device_id"?
 set_playback_track() {
     token=$1
     auth_header="Authorization: Bearer ${token}"
@@ -88,7 +96,10 @@ set_playback_track() {
     # Spotify API bug prevents you from playing a song directly, so you need to workaround with the album
     album_uri=$(curl -s -X GET "${url}/tracks/${track_id}" -H "$auth_header" -H "Content-Type: application/json" | jq -r '.album.uri')
     # Play on currently playing device
-    device_id=$(curl -s "${url}/me/player/devices" -H "$auth_header" | jq -r '.devices[] | select(.is_active) | .id')
+    device_id=$3
+    if [[ "$device_id" == "" ]]; then
+        device_id=$(curl -s "${url}/me/player/devices" -H "$auth_header" | jq -r '.devices[] | select(.is_active) | .id')
+    fi
     data=$( jq -n --arg a_uri "$album_uri" --arg t_uri "$2" '{context_uri: $a_uri, offset: {uri: $t_uri}}' )
 
     status=$(curl -s -o /dev/null -w "%{http_code}" -X PUT "${url}/me/player/play?device_id=${device_id}" -H "$auth_header" -H "Content-Type: application/json" -d "$data")
@@ -109,6 +120,15 @@ set_playback_context() {
     status=$(curl -s -o /dev/null -w "%{http_code}" -X PUT "${url}/me/player/play?device_id=${device_id}" -H "$auth_header" -H "Content-Type: application/json" -d "$data")
 
     echo "$status"
+}
+
+# Arguments: "token"
+get_devices() {
+    token=$1
+    auth_header="Authorization: Bearer ${token}"
+    response=$(curl -s "${url}/me/player/devices" -H "$auth_header")
+
+    echo "$response"
 }
 
 # ===== Searching =====
