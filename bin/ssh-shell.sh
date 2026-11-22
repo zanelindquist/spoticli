@@ -5,6 +5,7 @@ set -eo pipefail
 PROJECT_ROOT="$(dirname "$(dirname "$(realpath "$0")")")"
 source "$PROJECT_ROOT/lib/user_mapping.sh"
 source "$PROJECT_ROOT/lib/fingerprint.sh"
+source "$PROJECT_ROOT/lib/images.sh"
 
 # Debug tacks
 is_verbose=false
@@ -31,7 +32,7 @@ PROJECT_ROOT="$(dirname "$(dirname "$(realpath "$0")")")"
 # Get user's identity
 fingerprint_user fingerprint
 
-if [[ "$is_verbose" == "true" ]]; then
+if [[ "$is_verbose" == "true" && "$APP_ENV" == "local" ]]; then
 	echo "User fingerprint: $fingerprint"
 fi
 
@@ -39,9 +40,15 @@ fi
 # Get user's id from their fingerprint
 user_id=$(get_user_from_fingerprint $fingerprint)
 
-if [[ "$is_verbose" == "true" ]]; then
+if [[ "$is_verbose" == "true" && "$APP_ENV" == "local" ]]; then
     echo "User id: $user_id"
 fi
+
+print_logo_center 40 1
+if [[ "$is_verbose" != "true" ]]; then
+    sleep 1
+fi
+clear
 
 if [[ $user_id != "" ]]; then
     # Check for reauth
@@ -67,7 +74,7 @@ if [[ $user_id != "" ]]; then
 else
     user_id=$("$PROJECT_ROOT/bin/spoticli" login $fingerprint)
 
-    if [[ "$is_verbose" == "true" ]]; then
+    if [[ "$is_verbose" == "true" && "$APP_ENV" == "local" ]]; then
         printf 'User ID: %s' $user_id
         echo -e "\nPress any key to continue...."
         read -r

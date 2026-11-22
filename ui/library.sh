@@ -22,7 +22,7 @@ is_running=1
 force_redraw=1
 playlist_name=""
 
-print_middle_screen "$GREEN" "Loading library..."
+print_middle_screen "$VIOLET" "Loading library..."
 
 # Fetch library
 library=$(mktemp)

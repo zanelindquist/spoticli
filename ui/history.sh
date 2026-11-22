@@ -19,7 +19,7 @@ view_mode="history"
 force_redraw=1
 is_running=1
 
-print_middle_screen "$GREEN" "Loading history..."
+print_middle_screen "$VIOLET" "Loading history..."
 
 # Hold numbers for selection
 history_cache="$user_temp_dir/history_cache"
