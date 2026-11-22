@@ -84,11 +84,17 @@ while [[ $is_running -ne 0 ]]; do
     fi
 
     if [[ "$status" -eq 204 ]]; then
-        print_middle_screen "$VIOLET" "No currently playing song"
+        print_middle_screen "$VIOLET" "No currently playing song" "Please select a device to resume playback on..."
         devices=$("$PROJECT_ROOT/bin/spoticli" streamstate "$USER_ID" -d)
         devices_length=$(jq -r '.devices | length' <<< "$devices")
-        if (( devices_length == 1 )); then
+        if (( devices_length >= 1 )); then
             device_uri=$(jq -r '.devices[0].id' <<< "$devices")
+            if (( devices_length > 1 )); then
+                devices=$("$PROJECT_ROOT/bin/spoticli" streamstate "$USER_ID" -d)
+                mapfile -t device_names < <(echo "$devices" | jq -r ".devices[].name")
+                get_item_selection device_num "${device_names[@]}"
+                device_uri=$(jq -r ".devices[$device_num].id" <<< "$devices")
+            fi
             if [[ ! -f "$user_temp_dir/last_played_uri" ]]; then
                 clear
                 draw_topbar 2
@@ -103,20 +109,16 @@ while [[ $is_running -ne 0 ]]; do
                     tail -n +2 <<< "$response" > "$response"
                 fi
             fi
-        elif (( devices_length > 1 )); then
-            # Prompt the user to select from devices
-            # Arguments: <ptr>selected_number ["options1", "option2"...]
-            # TODO: Allow use to do device selection
-            get_item_selection selection "Device 1" "Device 2"
-        else
+        elif (( devices_length == 0 )); then
             clear
             draw_topbar 2
             print_commands $view_mode $is_playing $is_shuffle
             print_middle_screen "$VIOLET" "No playback found" "Please start a Spotify playback session on one of your devices"
+        else
+            # Prompt the user to select a device to start playback on
+            rm "$response"
+            exit 0
         fi
-        # Prompt the user to select a device to start playback on
-        rm "$response"
-        exit 0
     fi
 
     # Check if file is empty
