@@ -83,43 +83,53 @@ while [[ $is_running -ne 0 ]]; do
         exit 1
     fi
 
-    if [[ "$status" -eq 204 ]]; then
+    while [[ "$status" -eq 204 ]]; do
+        clear
+        draw_topbar 2
+        print_commands $view_mode $is_playing $is_shuffle
         print_middle_screen "$VIOLET" "No currently playing song" "Please select a device to resume playback on..."
-        devices=$("$PROJECT_ROOT/bin/spoticli" streamstate "$USER_ID" -d)
-        devices_length=$(jq -r '.devices | length' <<< "$devices")
-        if (( devices_length >= 1 )); then
-            device_uri=$(jq -r '.devices[0].id' <<< "$devices")
-            if (( devices_length > 1 )); then
-                devices=$("$PROJECT_ROOT/bin/spoticli" streamstate "$USER_ID" -d)
-                mapfile -t device_names < <(echo "$devices" | jq -r ".devices[].name")
-                get_item_selection device_num "${device_names[@]}"
-                device_uri=$(jq -r ".devices[$device_num].id" <<< "$devices")
-            fi
-            if [[ ! -f "$user_temp_dir/last_played_uri" ]]; then
-                clear
-                draw_topbar 2
-                print_commands $view_mode $is_playing $is_shuffle
-                print_middle_screen "$VIOLET" "No playback found" "Please start a Spotify playback session on one of your devices"
-            else
-                previous_track_uri=$(cat "$user_temp_dir/last_played_uri" | head -n 1 | sed 's/\r$//g')
-                status=$("$PROJECT_ROOT/bin/spoticli" streamstate "$USER_ID" -i "$device_uri" -T "$previous_track_uri")
-                if [[ "$status" -eq 200 ]]; then
-                    "$PROJECT_ROOT/bin/spoticli" streamstate "$USER_ID" -c > "$response"
-                    status=$(head -n1 < "$response")
-                    tail -n +2 <<< "$response" > "$response"
-                fi
-            fi
-        elif (( devices_length == 0 )); then
+
+        # Get the device ID
+        device_id=$(select_device_id)
+        devices_length=1
+
+        if [[ "$device_id" == "" ]]; then
+            devices_length=0
             clear
             draw_topbar 2
             print_commands $view_mode $is_playing $is_shuffle
             print_middle_screen "$VIOLET" "No playback found" "Please start a Spotify playback session on one of your devices"
-        else
-            # Prompt the user to select a device to start playback on
-            rm "$response"
-            exit 0
+
+            # Check every 5 seconds to see if the user has opened a device
+            while [[ "$devices_length" -eq 0 ]]; do
+                sleep 3
+
+                devices=$("$PROJECT_ROOT/bin/spoticli" streamstate "$USER_ID" -d)
+                devices_length=$(jq -r '.devices | length' <<< "$devices")
+                is_active=$(jq -r '.devices[0].is_active' <<< "$devices")
+                # Make sure the devices is active. only then can we start playback on it
+                if [[ "$devices_length" -gt 0 && "$is_active" == "true" ]]; then
+                    device_id=$(select_device_id)
+                    devices_length=1
+                fi
+            done
         fi
-    fi
+
+        # Get the last song from history to play
+        previous_track_uri=$("$PROJECT_ROOT/bin/spoticli" history "$USER_ID" -l 1 -h | jq -r '.items[0].track.uri')
+        # Play the previous track on the user's selected device
+        status=$("$PROJECT_ROOT/bin/spoticli" streamstate "$USER_ID" -i "$device_id" -T "$previous_track_uri")
+
+        # If the playback succeded, fetch the normal data
+        if [[ "$previous_track_uri" != "" && "$device_id" != "" ]]; then
+            "$PROJECT_ROOT/bin/spoticli" streamstate "$USER_ID" -c > "$response"
+            status=$(head -n1 < "$response")
+            sed -i '1d' "$response"
+            force_now_playing_redraw=1
+        else
+            sleep 3
+        fi
+    done
 
     # Check if file is empty
     if [[ ! -s "$response" ]]; then
@@ -142,9 +152,6 @@ while [[ $is_running -ne 0 ]]; do
     left_progress_indent=$( echo "($SCREEN_WIDTH - $SCREEN_WIDTH / $progress_width_ratio) / 2" | bc )
     progress_bars=$( echo "($SCREEN_WIDTH / $progress_width_ratio) * $progress_ms / $duration_ms" | bc )
     progress_bars_remaining=$( echo "($SCREEN_WIDTH / $progress_width_ratio) - $progress_bars - 1" | bc )
-
-    # Store the track as the last streamed track
-    echo "$uri" > "$user_temp_dir/last_played_uri"
 
     # Unqueue logic for skipping songs
 

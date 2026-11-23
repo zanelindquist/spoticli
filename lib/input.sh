@@ -127,3 +127,26 @@ get_item_selection() {
 
     set_bottom_bars "$num_items"
 }
+
+# Arguments: none
+select_device_id() {
+    devices=$("$PROJECT_ROOT/bin/spoticli" streamstate "$USER_ID" -d)
+    devices_length=$(jq -r '.devices | length' <<< "$devices")
+    if (( devices_length >= 1 )); then
+        device_id=$(jq -r '.devices[0].id' <<< "$devices")
+        # If there is more than one device...
+        if (( devices_length > 1 )); then
+            devices=$("$PROJECT_ROOT/bin/spoticli" streamstate "$USER_ID" -d)
+            mapfile -t device_names < <(echo "$devices" | jq -r ".devices[].name")
+            get_item_selection device_num "${device_names[@]}"
+            device_id=$(jq -r ".devices[$device_num].id" <<< "$devices")
+
+        fi
+
+        # Return device ID
+        echo "$device_id"
+    else
+        echo ""
+    fi
+
+}
