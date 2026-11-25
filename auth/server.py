@@ -81,7 +81,7 @@ class AuthHandler(BaseHTTPRequestHandler):
 
 		# Get .env information
 		script_dir = Path(__file__).resolve().parent
-		env_path = (script_dir / f"../config/${APP_ENV}.env").resolve()
+		env_path = (script_dir / f"../config/{APP_ENV}.env").resolve()
 		load_dotenv(dotenv_path=env_path, override=True)
 
 		client_id = os.getenv("SPOTIFY_CLIENT_ID")
@@ -93,7 +93,6 @@ class AuthHandler(BaseHTTPRequestHandler):
 		auth_string = f"{os.getenv("SPOTIFY_CLIENT_ID")}:{os.getenv("SPOTIFY_CLIENT_SECRET")}"
 		auth_bytes = auth_string.encode("utf-8")
 		auth_base64 = base64.b64encode(auth_bytes).decode("utf-8")
-
 
 		headers = {
 			"Content-Type": "application/x-www-form-urlencoded",
@@ -118,36 +117,41 @@ class AuthHandler(BaseHTTPRequestHandler):
 			user_data_path = script_dir / f"../data/users/{user_id}"
 			# Create user's dir
 			user_data_path.mkdir(parents=True, exist_ok=True)
-			shutil.chown(user_data_path, user="root", group="spoticli")
-			os.chmod(user_data_path, 0o770)
+			if APP_ENV == "prod":
+				shutil.chown(user_data_path, user="root", group="spoticli")
+				os.chmod(user_data_path, 0o770)
 			
 			# Write token to file
 			with open(user_data_path / "token", "w") as file:
 				file.write(access_token)
 				file.close()
-			shutil.chown(user_data_path / "token", user="root", group="spoticli")
-			os.chmod(user_data_path / "token", 0o770)
+			if APP_ENV == "prod":
+				shutil.chown(user_data_path / "token", user="root", group="spoticli")
+				os.chmod(user_data_path / "token", 0o770)
 
 			# Record refresh token
 			with open(user_data_path / "refresh_token", "w") as file:
 				file.write(refresh_token)
 				file.close()
-			shutil.chown(user_data_path / "refresh_token", user="root", group="spoticli")
-			os.chmod(user_data_path / "refresh_token", 0o770)
+			if APP_ENV == "prod":
+				shutil.chown(user_data_path / "refresh_token", user="root", group="spoticli")
+				os.chmod(user_data_path / "refresh_token", 0o770)
 
 			# Record token expiration
 			with open(user_data_path / "token_expires_at", "w") as file:
 				expires_at = int(time.time()) + token_info["expires_in"]
 				file.write(str(expires_at))
-			shutil.chown(user_data_path / "token_expires_at", user="root", group="spoticli")
-			os.chmod(user_data_path / "token_expires_at", 0o770)
+			if APP_ENV == "prod":
+				shutil.chown(user_data_path / "token_expires_at", user="root", group="spoticli")
+				os.chmod(user_data_path / "token_expires_at", 0o770)
 			
 			# Save the user_id to the session file
 			with open(user_session_path / "user_id", "w") as file:
 				file.write(user_id)
 				file.close()
-			shutil.chown(user_session_path / "user_id", user="root", group="spoticli")
-			os.chmod(user_session_path / "user_id", 0o770)
+			if APP_ENV == "prod":
+				shutil.chown(user_session_path / "user_id", user="root", group="spoticli")
+				os.chmod(user_session_path / "user_id", 0o770)
 				
 			# Finally update status path to indicate to the auth_wait function that we are complete and the user's files are ready
 			with open(user_session_path / "status", "w") as file:
@@ -156,27 +160,46 @@ class AuthHandler(BaseHTTPRequestHandler):
 
 			print("New user authenticated")
 
+			self.send_response(200)
+			self.send_header("Content-Type", "text/html")
+			self.end_headers()
+
+			self.wfile.write(
+				b"""
+				<html>
+					<head>
+						<title>SpotiCLI</title>
+					</head>
+					<body>
+						<h1>Authentication successful!</h1>
+						<p>You can return to your SSH session.</p>
+					</body>
+				</html>
+				"""
+			)
+
 		else:
 			print(f"Error: {response.status_code}")
 			print(response.json())
 
-		self.send_response(200)
-		self.send_header("Content-Type", "text/html")
-		self.end_headers()
+			self.send_response(500)
+			self.send_header("Content-Type", "text/html")
+			self.end_headers()
 
-		self.wfile.write(
-			b"""
-			<html>
-				<head>
-					<title>SpotiCLI</title>
-				</head>
-				<body>
-					<h1>Authentication successful!</h1>
-					<p>You can return to your SSH session.</p>
-				</body>
-			</html>
-			"""
-		)
+			self.wfile.write(
+				b"""
+				<html>
+					<head>
+						<title>SpotiCLI</title>
+					</head>
+					<body>
+						<h1>We apologize for the inconvenience<h1>
+						<p>An error has occurred</p>
+					</body>
+				</html>
+				"""
+			)
+
 
 	def log_message(self, format, *args):
 		print(f"[HTTP] {format % args}")
